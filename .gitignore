@@ -1,0 +1,43 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+
+# Node / pnpm
+node_modules/
+*.log
+.pnpm-store/
+
+# Vite
+frontend/dist/
+
+# Tauri / Rust
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# SQLite (local user data, never committed)
+*.sqlite
+*.sqlite-journal
+*.db
+*.db-wal
+*.db-shm
+
+# Env
+.env
+.env.local
