@@ -34,6 +34,15 @@ export const fr = {
   comptes: {
     title: "Comptes",
     placeholder: "Gestion des comptes et import à venir.",
+    empty: "Aucun compte. Ajoutez-en un pour commencer.",
+    connect: "Connecter",
+    connectSoon: "Bientôt disponible",
+    import: "Importer",
+    importSoon: "Bientôt disponible",
+    addTitle: "Ajouter un compte",
+    addDescription: "Donnez-lui un nom pour le distinguer.",
+    namePlaceholder: "Compte courant",
+    errorDuplicate: "Un compte avec ce nom existe déjà.",
   },
   common: {
     loading: "Chargement…",

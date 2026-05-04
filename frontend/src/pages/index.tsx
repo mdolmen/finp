@@ -27,6 +27,4 @@ export function ReglesPage() {
   return <Stub title={fr.regles.title} placeholder={fr.regles.placeholder} />;
 }
 
-export function ComptesPage() {
-  return <Stub title={fr.comptes.title} placeholder={fr.comptes.placeholder} />;
-}
+export { ComptesPage } from "./comptes";
