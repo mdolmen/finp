@@ -6,16 +6,36 @@
 
 export type DateFormat = "iso" | "dmy_slash" | "mdy_slash";
 export type DecimalSeparator = "." | ",";
+export type Charset =
+  | "utf-8"
+  | "windows-1252"
+  | "iso-8859-1"
+  | "iso-8859-15"
+  | "iso-8859-3";
 
-export type CsvMapping = {
+export type MontantMode = "single" | "split";
+
+type BaseMapping = {
+  charset: Charset;
   delimiter: "," | ";";
   has_header: true;
   date_column: string;
   date_format: DateFormat;
-  montant_column: string;
   montant_decimal: DecimalSeparator;
   libelle_column: string;
 };
+
+export type CsvMapping =
+  | (BaseMapping & { montant_mode: "single"; montant_column: string })
+  | (BaseMapping & {
+      montant_mode: "split";
+      debit_column: string;
+      credit_column: string;
+    });
+
+export function decodeBuffer(buffer: ArrayBuffer, charset: Charset): string {
+  return new TextDecoder(charset, { fatal: false }).decode(buffer);
+}
 
 export function parseDate(input: string, format: DateFormat): string {
   const s = input.trim();
@@ -68,14 +88,23 @@ export type RowConversion =
   | { ok: true; row: NormalizedRow }
   | { ok: false; index: number; reason: string };
 
+function montantFromRow(raw: RawRow, mapping: CsvMapping): number {
+  if (mapping.montant_mode === "single") {
+    return parseMontantCents(raw[mapping.montant_column] ?? "", mapping.montant_decimal);
+  }
+  const debit = (raw[mapping.debit_column] ?? "").trim();
+  const credit = (raw[mapping.credit_column] ?? "").trim();
+  if (debit && credit) throw new Error("débit et crédit tous deux renseignés");
+  if (!debit && !credit) throw new Error("débit et crédit tous deux vides");
+  if (debit) return -Math.abs(parseMontantCents(debit, mapping.montant_decimal));
+  return Math.abs(parseMontantCents(credit, mapping.montant_decimal));
+}
+
 export function convertRows(rows: RawRow[], mapping: CsvMapping): RowConversion[] {
   return rows.map((raw, index) => {
     try {
       const date = parseDate(raw[mapping.date_column] ?? "", mapping.date_format);
-      const montant_cents = parseMontantCents(
-        raw[mapping.montant_column] ?? "",
-        mapping.montant_decimal,
-      );
+      const montant_cents = montantFromRow(raw, mapping);
       const libelle = (raw[mapping.libelle_column] ?? "").trim();
       if (!libelle) throw new Error("libellé vide");
       return { ok: true as const, row: { date, montant_cents, libelle } };

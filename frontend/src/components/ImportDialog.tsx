@@ -20,8 +20,15 @@ import {
 } from "@/components/ui/select";
 import { accountsApi, importsApi, RpcError } from "@/lib/api";
 import type { Account, IngestResult } from "@/lib/api";
-import { convertRows } from "@/lib/csv";
-import type { CsvMapping, DateFormat, DecimalSeparator, RawRow } from "@/lib/csv";
+import { convertRows, decodeBuffer } from "@/lib/csv";
+import type {
+  Charset,
+  CsvMapping,
+  DateFormat,
+  DecimalSeparator,
+  MontantMode,
+  RawRow,
+} from "@/lib/csv";
 import { fr } from "@/i18n/fr";
 
 type Step =
@@ -29,12 +36,31 @@ type Step =
   | {
       kind: "mapping";
       filename: string;
-      rows: RawRow[];
-      columns: string[];
-      mapping: Partial<CsvMapping>;
+      buffer: ArrayBuffer;
+      saved: Partial<CsvMapping>;
     }
-  | { kind: "running" }
-  | { kind: "done"; result: IngestResult; failed: number; failedReasons: string[] };
+  | {
+      // Conversion has run; the user reviews counts and failures before any
+      // database write.
+      kind: "preview";
+      filename: string;
+      buffer: ArrayBuffer;
+      mapping: CsvMapping;
+      validRows: { date: string; montant_cents: number; libelle: string }[];
+      failedReasons: string[];
+      failedTotal: number;
+    }
+  | {
+      kind: "done";
+      result: IngestResult;
+      failed: number;
+      failedReasons: string[];
+      // Preserved so the Retour button can re-enter the mapping step with
+      // the same file already loaded — useful when some rows failed.
+      filename: string;
+      buffer: ArrayBuffer;
+      saved: Partial<CsvMapping>;
+    };
 
 const DATE_FORMATS: { value: DateFormat; label: string }[] = [
   { value: "iso", label: "AAAA-MM-JJ" },
@@ -45,6 +71,24 @@ const DATE_FORMATS: { value: DateFormat; label: string }[] = [
 const DECIMAL_OPTIONS: { value: DecimalSeparator; label: string }[] = [
   { value: ",", label: ", (virgule)" },
   { value: ".", label: ". (point)" },
+];
+
+const CHARSET_OPTIONS: { value: Charset; label: string }[] = [
+  { value: "utf-8", label: "UTF-8" },
+  { value: "windows-1252", label: "Windows-1252" },
+  { value: "iso-8859-1", label: "ISO-8859-1 (Latin-1)" },
+  { value: "iso-8859-15", label: "ISO-8859-15 (Latin-9)" },
+  { value: "iso-8859-3", label: "ISO-8859-3 (Latin-3)" },
+];
+
+const DELIMITER_OPTIONS: { value: "," | ";"; label: string }[] = [
+  { value: ",", label: ", (virgule)" },
+  { value: ";", label: "; (point-virgule)" },
+];
+
+const MONTANT_MODE_OPTIONS: { value: MontantMode; label: string }[] = [
+  { value: "single", label: "Une colonne signée" },
+  { value: "split", label: "Deux colonnes (débit / crédit)" },
 ];
 
 export function ImportDialog({
@@ -70,38 +114,14 @@ export function ImportDialog({
 
   async function handleFile(file: File) {
     setError(null);
-    const text = await file.text();
+    const buffer = await file.arrayBuffer();
     const saved = (account.csv_mapping ?? {}) as Partial<CsvMapping>;
-    const delimiter = (saved.delimiter as "," | ";" | undefined) ?? guessDelimiter(text);
-
-    const result = Papa.parse<RawRow>(text, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter,
-    });
-    if (result.errors.length) {
-      setError(`Erreur de lecture CSV : ${result.errors[0]?.message ?? "inconnue"}`);
-      return;
-    }
-    const rows = result.data;
-    const columns = result.meta.fields ?? [];
-    if (rows.length === 0 || columns.length === 0) {
-      setError("Fichier vide ou sans en-tête.");
-      return;
-    }
-    setStep({
-      kind: "mapping",
-      filename: file.name,
-      rows,
-      columns,
-      mapping: { ...saved, delimiter, has_header: true },
-    });
+    setStep({ kind: "mapping", filename: file.name, buffer, saved });
   }
 
-  async function handleIngest(mapping: CsvMapping, rows: RawRow[]) {
+  function handleValidate(mapping: CsvMapping, rows: RawRow[]): string | null {
+    if (step.kind !== "mapping") return null;
     setError(null);
-    setStep({ kind: "running" });
-
     const conversions = convertRows(rows, mapping);
     const ok = conversions.flatMap((c) => (c.ok ? [c.row] : []));
     const failedReasons = conversions
@@ -109,33 +129,53 @@ export function ImportDialog({
       .slice(0, 5);
 
     if (ok.length === 0) {
-      setError("Aucune ligne valide à importer.");
-      setStep((prev) => prev); // stay; user will adjust mapping
-      return;
+      return "Aucune ligne valide à importer. Vérifiez le mappage.";
     }
 
+    setStep({
+      kind: "preview",
+      filename: step.filename,
+      buffer: step.buffer,
+      mapping,
+      validRows: ok,
+      failedReasons,
+      failedTotal: conversions.length - ok.length,
+    });
+    return null;
+  }
+
+  async function handleConfirmIngest(): Promise<string | null> {
+    if (step.kind !== "preview") return null;
     try {
       const result = await importsApi.ingest({
         account_id: account.id,
-        rows: ok,
+        rows: step.validRows,
       });
-      await accountsApi.setCsvMapping(account.id, mapping as Record<string, unknown>);
+      await accountsApi.setCsvMapping(
+        account.id,
+        step.mapping as Record<string, unknown>,
+      );
       setStep({
         kind: "done",
         result,
-        failed: conversions.length - ok.length,
-        failedReasons,
+        failed: step.failedTotal,
+        failedReasons: step.failedReasons,
+        filename: step.filename,
+        buffer: step.buffer,
+        // Preserve the just-used mapping so the Retour path opens with it
+        // pre-filled rather than reverting to the older saved mapping.
+        saved: step.mapping,
       });
       onImported();
+      return null;
     } catch (e) {
-      setError(e instanceof RpcError ? e.message : String(e));
-      setStep({ kind: "pick" });
+      return e instanceof RpcError ? e.message : String(e);
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>{fr.import.title.replace("{name}", account.name)}</DialogTitle>
           <DialogDescription>{fr.import.description}</DialogDescription>
@@ -148,16 +188,29 @@ export function ImportDialog({
         {step.kind === "mapping" && (
           <MappingStep
             filename={step.filename}
-            rows={step.rows}
-            columns={step.columns}
-            initial={step.mapping}
+            buffer={step.buffer}
+            saved={step.saved}
             onCancel={() => setStep({ kind: "pick" })}
-            onConfirm={(m) => handleIngest(m, step.rows)}
+            onValidate={handleValidate}
           />
         )}
 
-        {step.kind === "running" && (
-          <p className="text-sm text-muted-foreground py-4">{fr.common.loading}</p>
+        {step.kind === "preview" && (
+          <PreviewStep
+            filename={step.filename}
+            validCount={step.validRows.length}
+            failedTotal={step.failedTotal}
+            failedReasons={step.failedReasons}
+            onBack={() =>
+              setStep({
+                kind: "mapping",
+                filename: step.filename,
+                buffer: step.buffer,
+                saved: step.mapping,
+              })
+            }
+            onConfirm={handleConfirmIngest}
+          />
         )}
 
         {step.kind === "done" && (
@@ -165,6 +218,14 @@ export function ImportDialog({
             result={step.result}
             failed={step.failed}
             failedReasons={step.failedReasons}
+            onBack={() =>
+              setStep({
+                kind: "mapping",
+                filename: step.filename,
+                buffer: step.buffer,
+                saved: step.saved,
+              })
+            }
             onClose={() => onOpenChange(false)}
           />
         )}
@@ -194,59 +255,172 @@ function PickStep({ onFile }: { onFile: (f: File) => void }) {
 
 function MappingStep({
   filename,
-  rows,
-  columns,
-  initial,
+  buffer,
+  saved,
   onCancel,
-  onConfirm,
+  onValidate,
 }: {
   filename: string;
-  rows: RawRow[];
-  columns: string[];
-  initial: Partial<CsvMapping>;
+  buffer: ArrayBuffer;
+  saved: Partial<CsvMapping>;
   onCancel: () => void;
-  onConfirm: (m: CsvMapping) => void;
+  onValidate: (mapping: CsvMapping, rows: RawRow[]) => string | null;
 }) {
-  const [dateColumn, setDateColumn] = useState(initial.date_column ?? columns[0]);
-  const [montantColumn, setMontantColumn] = useState(
-    initial.montant_column ?? columns[1] ?? columns[0],
-  );
-  const [libelleColumn, setLibelleColumn] = useState(
-    initial.libelle_column ?? columns[2] ?? columns[0],
-  );
-  const [dateFormat, setDateFormat] = useState<DateFormat>(initial.date_format ?? "dmy_slash");
-  const [decimal, setDecimal] = useState<DecimalSeparator>(initial.montant_decimal ?? ",");
-  const delimiter = initial.delimiter ?? ",";
+  // The discriminated union lets the rest of the app reason about modes
+  // safely; for initialisation here we read whichever branch the saved blob
+  // happens to be on (older mappings predate the mode flag — default to single).
+  const savedAny = saved as Partial<{
+    charset: Charset;
+    delimiter: "," | ";";
+    date_column: string;
+    date_format: DateFormat;
+    montant_decimal: DecimalSeparator;
+    libelle_column: string;
+    montant_mode: MontantMode;
+    montant_column: string;
+    debit_column: string;
+    credit_column: string;
+  }>;
 
-  const preview = useMemo(() => rows.slice(0, 5), [rows]);
-  const valid = dateColumn && montantColumn && libelleColumn;
+  const [charset, setCharset] = useState<Charset>(savedAny.charset ?? "utf-8");
+  const [delimiter, setDelimiter] = useState<"," | ";">(savedAny.delimiter ?? ",");
+  const [dateFormat, setDateFormat] = useState<DateFormat>(savedAny.date_format ?? "dmy_slash");
+  const [decimal, setDecimal] = useState<DecimalSeparator>(savedAny.montant_decimal ?? ",");
+  const [dateColumn, setDateColumn] = useState(savedAny.date_column ?? "");
+  const [libelleColumn, setLibelleColumn] = useState(savedAny.libelle_column ?? "");
+  const [montantMode, setMontantMode] = useState<MontantMode>(savedAny.montant_mode ?? "single");
+  const [montantColumn, setMontantColumn] = useState(savedAny.montant_column ?? "");
+  const [debitColumn, setDebitColumn] = useState(savedAny.debit_column ?? "");
+  const [creditColumn, setCreditColumn] = useState(savedAny.credit_column ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  function submit() {
-    if (!valid) return;
-    onConfirm({
+  // Re-decode + re-parse whenever the buffer, charset, or delimiter changes.
+  // Auto-detect delimiter on first load if not pre-saved.
+  const parsed = useMemo(() => {
+    const text = decodeBuffer(buffer, charset);
+    const effective = saved.delimiter ? delimiter : guessDelimiter(text);
+    const result = Papa.parse<RawRow>(text, {
+      header: true,
+      skipEmptyLines: true,
+      delimiter: effective,
+    });
+    return {
+      rows: result.data,
+      columns: result.meta.fields ?? [],
+      effectiveDelimiter: effective,
+      errors: result.errors,
+    };
+  }, [buffer, charset, delimiter, saved.delimiter]);
+
+  // Sync the auto-guessed delimiter into local state on first parse.
+  useEffect(() => {
+    if (!saved.delimiter && parsed.effectiveDelimiter !== delimiter) {
+      setDelimiter(parsed.effectiveDelimiter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed.effectiveDelimiter]);
+
+  // Initialize column picks from the first columns once they appear,
+  // unless the user already chose (or a saved mapping exists).
+  useEffect(() => {
+    const cols = parsed.columns;
+    if (cols.length === 0) return;
+    if (!dateColumn || !cols.includes(dateColumn)) setDateColumn(cols[0] ?? "");
+    if (!libelleColumn || !cols.includes(libelleColumn)) {
+      setLibelleColumn(cols[2] ?? cols[0] ?? "");
+    }
+    if (montantMode === "single") {
+      if (!montantColumn || !cols.includes(montantColumn)) {
+        setMontantColumn(cols[1] ?? cols[0] ?? "");
+      }
+    } else {
+      if (!debitColumn || !cols.includes(debitColumn)) setDebitColumn(cols[1] ?? "");
+      if (!creditColumn || !cols.includes(creditColumn)) setCreditColumn(cols[2] ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed.columns, montantMode]);
+
+  const preview = useMemo(() => parsed.rows.slice(0, 5), [parsed.rows]);
+
+  const montantValid =
+    montantMode === "single"
+      ? !!montantColumn && parsed.columns.includes(montantColumn)
+      : !!debitColumn &&
+        !!creditColumn &&
+        debitColumn !== creditColumn &&
+        parsed.columns.includes(debitColumn) &&
+        parsed.columns.includes(creditColumn);
+
+  const valid =
+    !!dateColumn &&
+    !!libelleColumn &&
+    parsed.columns.includes(dateColumn) &&
+    parsed.columns.includes(libelleColumn) &&
+    montantValid;
+
+  function buildMapping(): CsvMapping {
+    const base = {
+      charset,
       delimiter,
-      has_header: true,
+      has_header: true as const,
       date_column: dateColumn,
       date_format: dateFormat,
-      montant_column: montantColumn,
       montant_decimal: decimal,
       libelle_column: libelleColumn,
-    });
+    };
+    return montantMode === "single"
+      ? { ...base, montant_mode: "single", montant_column: montantColumn }
+      : {
+          ...base,
+          montant_mode: "split",
+          debit_column: debitColumn,
+          credit_column: creditColumn,
+        };
+  }
+
+  function submit() {
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    setLocalError(null);
+    const err = onValidate(buildMapping(), parsed.rows);
+    setSubmitting(false);
+    if (err) setLocalError(err);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       <p className="text-xs text-muted-foreground">
         {fr.import.fileLabel}: <span className="font-mono">{filename}</span>
         {" · "}
-        {rows.length} {fr.import.rowsCount}
+        {parsed.rows.length} {fr.import.rowsCount}
+        {parsed.errors.length > 0 && (
+          <>
+            {" · "}
+            <span className="text-destructive">
+              {parsed.errors.length} erreur(s) de lecture
+            </span>
+          </>
+        )}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
+        <SelectField
+          label={fr.import.fieldCharset}
+          value={charset}
+          options={CHARSET_OPTIONS}
+          onChange={(v) => setCharset(v as Charset)}
+        />
+        <SelectField
+          label={fr.import.fieldDelimiter}
+          value={delimiter}
+          options={DELIMITER_OPTIONS}
+          onChange={(v) => setDelimiter(v as "," | ";")}
+        />
         <ColumnPicker
           label={fr.import.fieldDate}
           value={dateColumn}
-          columns={columns}
+          columns={parsed.columns}
           onChange={setDateColumn}
         />
         <SelectField
@@ -255,11 +429,11 @@ function MappingStep({
           options={DATE_FORMATS}
           onChange={(v) => setDateFormat(v as DateFormat)}
         />
-        <ColumnPicker
-          label={fr.import.fieldMontant}
-          value={montantColumn}
-          columns={columns}
-          onChange={setMontantColumn}
+        <SelectField
+          label={fr.import.fieldMontantMode}
+          value={montantMode}
+          options={MONTANT_MODE_OPTIONS}
+          onChange={(v) => setMontantMode(v as MontantMode)}
         />
         <SelectField
           label={fr.import.fieldDecimal}
@@ -267,10 +441,33 @@ function MappingStep({
           options={DECIMAL_OPTIONS}
           onChange={(v) => setDecimal(v as DecimalSeparator)}
         />
+        {montantMode === "single" ? (
+          <ColumnPicker
+            label={fr.import.fieldMontant}
+            value={montantColumn}
+            columns={parsed.columns}
+            onChange={setMontantColumn}
+          />
+        ) : (
+          <>
+            <ColumnPicker
+              label={fr.import.fieldDebit}
+              value={debitColumn}
+              columns={parsed.columns}
+              onChange={setDebitColumn}
+            />
+            <ColumnPicker
+              label={fr.import.fieldCredit}
+              value={creditColumn}
+              columns={parsed.columns}
+              onChange={setCreditColumn}
+            />
+          </>
+        )}
         <ColumnPicker
           label={fr.import.fieldLibelle}
           value={libelleColumn}
-          columns={columns}
+          columns={parsed.columns}
           onChange={setLibelleColumn}
         />
       </div>
@@ -279,12 +476,15 @@ function MappingStep({
         <div className="text-xs text-muted-foreground px-3 py-1.5 bg-muted/40 border-b border-border">
           {fr.import.preview}
         </div>
-        <div className="overflow-x-auto">
-          <table className="text-xs w-full">
+        <div className="overflow-x-auto max-w-full">
+          <table className="text-xs">
             <thead>
               <tr className="border-b border-border">
-                {columns.map((c) => (
-                  <th key={c} className="text-left font-medium px-3 py-1.5 whitespace-nowrap">
+                {parsed.columns.map((c) => (
+                  <th
+                    key={c}
+                    className="text-left font-medium px-3 py-1.5 whitespace-nowrap"
+                  >
                     {c}
                   </th>
                 ))}
@@ -293,8 +493,11 @@ function MappingStep({
             <tbody>
               {preview.map((row, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
-                  {columns.map((c) => (
-                    <td key={c} className="px-3 py-1 whitespace-nowrap text-muted-foreground">
+                  {parsed.columns.map((c) => (
+                    <td
+                      key={c}
+                      className="px-3 py-1 whitespace-nowrap text-muted-foreground"
+                    >
                       {row[c]}
                     </td>
                   ))}
@@ -305,12 +508,14 @@ function MappingStep({
         </div>
       </div>
 
+      {localError && <p className="text-sm text-destructive">{localError}</p>}
+
       <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
           {fr.common.cancel}
         </Button>
-        <Button type="button" onClick={submit} disabled={!valid}>
-          {fr.import.run}
+        <Button type="button" onClick={submit} disabled={!valid || submitting}>
+          {fr.import.validate}
         </Button>
       </DialogFooter>
     </div>
@@ -321,11 +526,13 @@ function DoneStep({
   result,
   failed,
   failedReasons,
+  onBack,
   onClose,
 }: {
   result: IngestResult;
   failed: number;
   failedReasons: string[];
+  onBack: () => void;
   onClose: () => void;
 }) {
   return (
@@ -357,7 +564,78 @@ function DoneStep({
         </ul>
       )}
       <DialogFooter>
+        {failed > 0 && (
+          <Button type="button" variant="ghost" onClick={onBack}>
+            {fr.common.back}
+          </Button>
+        )}
         <Button onClick={onClose}>{fr.common.close}</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function PreviewStep({
+  filename,
+  validCount,
+  failedTotal,
+  failedReasons,
+  onBack,
+  onConfirm,
+}: {
+  filename: string;
+  validCount: number;
+  failedTotal: number;
+  failedReasons: string[];
+  onBack: () => void;
+  onConfirm: () => Promise<string | null>;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    const err = await onConfirm();
+    if (err) {
+      setError(err);
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        {fr.import.fileLabel}: <span className="font-mono">{filename}</span>
+      </p>
+      <div className="text-sm">
+        <p>
+          <span className="font-semibold">{validCount}</span>{" "}
+          <span className="text-muted-foreground">{fr.import.confirmCount}</span>
+        </p>
+        {failedTotal > 0 && (
+          <p className="mt-1 text-destructive">
+            <span className="font-semibold">{failedTotal}</span>{" "}
+            {fr.import.confirmFailedHeader}
+          </p>
+        )}
+      </div>
+      {failedReasons.length > 0 && (
+        <ul className="text-xs text-muted-foreground border-l-2 border-destructive/40 pl-3 space-y-0.5">
+          {failedReasons.map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <Button type="button" variant="ghost" onClick={onBack} disabled={submitting}>
+          {fr.common.back}
+        </Button>
+        <Button type="button" onClick={handleConfirm} disabled={submitting}>
+          {submitting ? fr.common.loading : fr.import.run}
+        </Button>
       </DialogFooter>
     </div>
   );
@@ -375,7 +653,7 @@ function ColumnPicker({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 min-w-0">
       <Label className="text-xs">{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="w-full">
@@ -405,7 +683,7 @@ function SelectField<T extends string>({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 min-w-0">
       <Label className="text-xs">{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="w-full">
