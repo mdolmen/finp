@@ -49,6 +49,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+"src/finp/commands/**" = ["D101"]  # pydantic param/result classes are self-documenting
 
 [tool.ruff.format]
 quote-style = "double"

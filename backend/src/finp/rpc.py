@@ -23,6 +23,8 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from finp import __version__, db
+from finp.commands import accounts as account_cmds
+from finp.commands import categories as category_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
 
@@ -33,6 +35,8 @@ def _ping(_conn: sqlite3.Connection, _params: EmptyParams) -> dict[str, Any]:
 
 METHODS: dict[str, Command] = {
     "ping": Command(EmptyParams, _ping),
+    **account_cmds.METHODS,
+    **category_cmds.METHODS,
 }
 
 
