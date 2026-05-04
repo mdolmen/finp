@@ -25,6 +25,7 @@ from pydantic import BaseModel, ValidationError
 from finp import __version__, db
 from finp.commands import accounts as account_cmds
 from finp.commands import categories as category_cmds
+from finp.commands import operations as operation_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
 
@@ -37,6 +38,7 @@ METHODS: dict[str, Command] = {
     "ping": Command(EmptyParams, _ping),
     **account_cmds.METHODS,
     **category_cmds.METHODS,
+    **operation_cmds.METHODS,
 }
 
 
