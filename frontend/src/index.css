@@ -21,6 +21,11 @@
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
+    --color-debit: var(--debit);
+    --color-debit-soft: var(--debit-soft);
+    --color-credit: var(--credit);
+    --color-credit-soft: var(--credit-soft);
+    --color-internal: var(--internal);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -81,6 +86,13 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    /* Operation type accents. Two shades each of red/green for stacked bars
+       and subtle row borders; one blue for internal transfers. */
+    --debit: oklch(0.58 0.21 25);
+    --debit-soft: oklch(0.72 0.15 25);
+    --credit: oklch(0.58 0.16 150);
+    --credit-soft: oklch(0.72 0.12 150);
+    --internal: oklch(0.55 0.13 240);
 }
 
 .dark {
@@ -115,6 +127,11 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    --debit: oklch(0.66 0.20 25);
+    --debit-soft: oklch(0.76 0.15 25);
+    --credit: oklch(0.66 0.16 150);
+    --credit-soft: oklch(0.76 0.12 150);
+    --internal: oklch(0.65 0.14 240);
 }
 
 @layer base {
