@@ -20,7 +20,7 @@ function App() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center gap-6">
-      <h1 className="text-2xl font-semibold">Gestion Finances Personnelles</h1>
+      <h1 className="text-2xl font-semibold">Finances Personnelles</h1>
       <Button onClick={onPing}>Ping backend</Button>
       {result && <p className="text-sm text-muted-foreground">{result}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}

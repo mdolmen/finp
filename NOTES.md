@@ -1,4 +1,4 @@
-# Gestion Finances Personnelles
+# Finances Personnelles
 
 ## Idea
 

@@ -1,4 +1,4 @@
-# Gestion Finances Personnelles
+# Finances Personnelles
 
 Local-first personal finance GUI. No subscription, no cloud. See [NOTES.md](NOTES.md) for product spec.
 

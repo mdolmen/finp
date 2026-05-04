@@ -1,4 +1,4 @@
-# TODO — Gestion Finances Personnelles
+# TODO — Finances Personnelles
 
 Build order is roughly top-to-bottom. Each milestone should leave the app in a runnable, demoable state. See [NOTES.md](NOTES.md) for product spec and [CLAUDE.md](CLAUDE.md) for conventions.
 

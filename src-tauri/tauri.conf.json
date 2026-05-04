@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "gestion-finp",
+  "productName": "finp",
   "version": "0.1.0",
-  "identifier": "io.github.mathieudolmen.gestionfinp",
+  "identifier": "io.github.mathieudolmen.finp",
   "build": {
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Gestion Finances",
+        "title": "Finances Personnelles",
         "width": 800,
         "height": 600,
         "resizable": true,
