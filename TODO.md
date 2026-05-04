@@ -49,24 +49,24 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M3 — Frontend shell
 
-- [ ] App layout: collapsible left sidebar with hamburger toggle, content area.
-- [ ] Routing (React Router): `/bilan`, `/operations`, `/categories`, `/regles`, `/comptes`. Default route `/bilan`.
-- [ ] Sidebar items + visual separator between (`Bilan`, `Opérations`) and (`Catégories`, `Règles`, `Comptes`).
-- [ ] Theme tokens: red/green/blue accent variables for op types; two shades each of red/green for stacking.
-- [ ] French copy file `frontend/src/i18n/fr.ts` (single export, plain object) — every UI string goes through it from day one.
+- [x] App layout: collapsible left sidebar with hamburger toggle, content area.
+- [x] Routing (React Router): `/bilan`, `/operations`, `/categories`, `/regles`, `/comptes`. Default route `/bilan`.
+- [x] Sidebar items + visual separator between (`Bilan`, `Opérations`) and (`Catégories`, `Règles`, `Comptes`).
+- [x] Theme tokens: red/green/blue accent variables for op types; two shades each of red/green for stacking.
+- [x] French copy file `frontend/src/i18n/fr.ts` (single export, plain object) — every UI string goes through it from day one.
 
 ## M4 — Page "Comptes" + CSV import
 
 (Comptes first: nothing else is testable without operations.)
 
-- [ ] List accounts with: name, [Connecter] (disabled, "bientôt"), [Importer], [Supprimer].
-- [ ] "Add account" modal: name only.
-- [ ] Import flow:
-    - [ ] File picker → parse first CSV rows → mapping UI (pick which column = date, montant, libellé; date format).
-    - [ ] On confirm, save mapping on the account and ingest. Show count: imported / skipped (dedup) / failed.
-    - [ ] Re-import uses saved mapping without prompting.
+- [x] List accounts with: name, [Connecter] (disabled, "bientôt"), [Importer], [Supprimer].
+- [x] "Add account" modal: name only.
+- [x] Import flow:
+    - [x] File picker → parse first CSV rows → mapping UI (pick which column = date, montant, libellé; date format).
+    - [x] On confirm, save mapping on the account and ingest. Show count: imported / skipped (dedup) / failed.
+    - [ ] Re-import uses saved mapping without prompting (currently shown pre-filled).
 - [ ] Edit mapping action (per account).
-- [ ] After ingest: emit `operation.created` events; trigger rules engine on new ops.
+- [x] After ingest: emit `operation.created` events; trigger rules engine on new ops.
 
 ## M5 — Page "Catégories"
 

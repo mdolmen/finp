@@ -78,7 +78,7 @@ A visual clue to identify the operation type: a very slight border color or shad
 
 The list of rules. Can add a rule to automatically classify operations. Very simple logic. Code architecture should make it easy to add classification logics.
 
-At first very simple, "libellé" contains or "montant" >,<,==.
+At first very simple, "libellé" contains or "montant" >,<,==. An option to set the operation as recurrent.
 
 Rules are listed grouped by their target category, categories ordered alphabetically. Within a category, rules are ordered by priority (drag to reorder) — first match wins.
 
@@ -112,3 +112,11 @@ This page will show the workflows.
 We will implement that later as an improvement of the tool but we need to think the architecture to easily allow this kind of extension. I think we need to define events (e.g. operations updated, category assigned to an operation, etc.) so we can trigger the automation workflow (if it's configured only). That way if there is no automation configured, there is nothing to do. And there is a single place to check "do we trigger a workflow or not".
 
 For now this page does not have to be in the sidebar.
+
+#### Page "Previsions"
+
+Progam a planned expense.
+
+Anticipated expenses should be visible in the "Bilan" histogram, visually different: dash borders, transparent colors.
+
+Are considered anticipated expenses: these programmed ones + the reccurent operations.
