@@ -6,17 +6,17 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M0 — Scaffolding
 
-- [ ] Initialize git repo, add `.gitignore` (Python, Node, Tauri, SQLite, OS).
-- [ ] Create `backend/` Python project with `uv init`, src-layout, package name `finp`.
-    - [ ] Configure `ruff` (lint + format) in `pyproject.toml`.
-    - [ ] Add `pytest` + a smoke test.
-- [ ] Create `frontend/` Vite + React + TypeScript project with `pnpm`.
-    - [ ] Install Tailwind, configure with shadcn design tokens.
-    - [ ] `pnpm dlx shadcn@latest init` and add: `button`, `input`, `select`, `checkbox`, `dialog`, `dropdown-menu`, `separator`, `tooltip`.
-    - [ ] Strict TS config.
-- [ ] Bootstrap Tauri (`pnpm tauri init`) wrapping the Vite app.
-- [ ] Decide & implement Python ↔ Tauri bridge: **Tauri sidecar** binary (Python packaged with `pyinstaller` or `uv tool`) exposing a small JSON-RPC over stdin/stdout, invoked via Tauri commands. Document the choice in CLAUDE.md.
-- [ ] Verify end-to-end: `pnpm tauri dev` opens a window that calls one Python function and renders the result.
+- [x] Initialize git repo, add `.gitignore` (Python, Node, Tauri, SQLite, OS).
+- [x] Create `backend/` Python project with `uv init`, src-layout, package name `finp`.
+    - [x] Configure `ruff` (lint + format) in `pyproject.toml`.
+    - [x] Add `pytest` + a smoke test.
+- [x] Create `frontend/` Vite + React + TypeScript project with `pnpm`.
+    - [x] Install Tailwind, configure with shadcn design tokens.
+    - [x] `pnpm dlx shadcn@latest init` and add: `button`, `input`, `select`, `checkbox`, `dialog`, `dropdown-menu`, `separator`, `tooltip`.
+    - [x] Strict TS config.
+- [x] Bootstrap Tauri (`pnpm tauri init`) wrapping the Vite app.
+- [x] Decide & implement Python ↔ Tauri bridge: **Tauri sidecar** binary (Python packaged with `pyinstaller` or `uv tool`) exposing a small JSON-RPC over stdin/stdout, invoked via Tauri commands. Document the choice in CLAUDE.md.
+- [x] Verify end-to-end: `pnpm tauri dev` opens a window that calls one Python function and renders the result.
 
 ## M1 — Storage & domain core (backend, headless)
 
