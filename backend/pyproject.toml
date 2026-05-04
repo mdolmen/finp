@@ -38,6 +38,8 @@ select = [
 ignore = [
     "D100", "D104",  # missing module / package docstring — too noisy at this stage
     "D107",          # missing __init__ docstring
+    "D102",          # missing method docstring — only document when non-obvious
+    "D105",          # missing magic-method docstring
 ]
 
 [tool.ruff.lint.pydocstyle]
