@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
+import { rpc, RpcError } from "@/lib/api";
 
 type PingResult = { pong: boolean; version: string };
 
@@ -11,10 +11,10 @@ function App() {
   async function onPing() {
     setError(null);
     try {
-      const r = await invoke<PingResult>("ping");
+      const r = await rpc<PingResult>("ping");
       setResult(`backend v${r.version} — pong=${r.pong}`);
     } catch (e) {
-      setError(String(e));
+      setError(e instanceof RpcError ? `${e.appCode ?? e.code}: ${e.message}` : String(e));
     }
   }
 

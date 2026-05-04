@@ -1,13 +1,28 @@
 mod rpc;
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use tauri::Manager;
 
-use crate::rpc::RpcClient;
+use crate::rpc::{BridgeError, RpcClient, RpcError};
 
+// Single generic bridge command. The frontend addresses Python methods by name
+// (e.g. "accounts.list") and gets either the result value or a structured error.
 #[tauri::command]
-async fn ping(client: tauri::State<'_, RpcClient>) -> Result<Value, String> {
-    client.request("ping", json!({})).await.map_err(|e| e.to_string())
+async fn rpc(
+    client: tauri::State<'_, RpcClient>,
+    method: String,
+    params: Option<Value>,
+) -> Result<Value, RpcError> {
+    let params = params.unwrap_or_else(|| serde_json::json!({}));
+    match client.request(&method, params).await {
+        Ok(value) => Ok(value),
+        Err(BridgeError::Remote(err)) => Err(err),
+        Err(other) => Err(RpcError {
+            code: -32603,
+            message: other.to_string(),
+            data: None,
+        }),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -34,7 +49,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![ping])
+        .invoke_handler(tauri::generate_handler![rpc])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

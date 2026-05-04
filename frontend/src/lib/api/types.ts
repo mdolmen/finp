@@ -1,0 +1,56 @@
+// Wire shapes mirroring the pydantic output models in backend/src/finp/commands/.
+// Keep this file in lockstep with the Python side.
+
+export type OperationType = "debit" | "credit" | "internal";
+
+export type Account = {
+  id: number;
+  name: string;
+  csv_mapping: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type Category = {
+  id: number;
+  name: string;
+  is_builtin: boolean;
+  display_order: number;
+};
+
+export type Operation = {
+  id: number;
+  account_id: number;
+  date: string;
+  montant_cents: number;
+  libelle: string;
+  type: OperationType;
+  category_id: number | null;
+  dedup_hash: string;
+  created_at: string;
+};
+
+export type Predicate =
+  | { kind: "libelle_contains"; text: string; case_sensitive: boolean }
+  | { kind: "montant_compare"; operator: ">" | "<" | "=="; value_cents: number };
+
+export type Rule = {
+  id: number;
+  name: string;
+  category_id: number;
+  priority: number;
+  predicate: Predicate;
+  enabled: boolean;
+  created_at: string;
+};
+
+export type OperationFilters = {
+  account_ids?: number[] | null;
+  category_ids?: number[] | null;
+  include_no_category?: boolean;
+  types?: OperationType[] | null;
+  date_from?: string | null;
+  date_to?: string | null;
+  search?: string | null;
+  limit?: number | null;
+  offset?: number;
+};

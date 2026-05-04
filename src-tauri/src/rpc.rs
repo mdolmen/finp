@@ -5,21 +5,33 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicI64, Ordering};
 
+use serde::Serialize;
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::sync::Mutex;
 
+// Structured error returned to the frontend. Mirrors the Python AppError envelope:
+// `code` is the JSON-RPC numeric code, `data.code` (when present) is the stable
+// string identifier the UI keys off (e.g. "category.in_use").
+#[derive(Debug, Serialize, thiserror::Error)]
+#[error("rpc error {code}: {message}")]
+pub struct RpcError {
+    pub code: i64,
+    pub message: String,
+    pub data: Option<Value>,
+}
+
 #[derive(Debug, thiserror::Error)]
-pub enum RpcError {
+pub enum BridgeError {
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
     #[error("sidecar exited unexpectedly")]
     Closed,
     #[error("malformed response: {0}")]
     Malformed(String),
-    #[error("rpc error {code}: {message}")]
-    Remote { code: i64, message: String },
+    #[error(transparent)]
+    Remote(#[from] RpcError),
 }
 
 pub struct RpcClient {
@@ -61,10 +73,10 @@ impl RpcClient {
         })
     }
 
-    pub async fn request(&self, method: &str, params: Value) -> Result<Value, RpcError> {
+    pub async fn request(&self, method: &str, params: Value) -> Result<Value, BridgeError> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let req = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
-        let mut payload = serde_json::to_vec(&req).map_err(|e| RpcError::Malformed(e.to_string()))?;
+        let mut payload = serde_json::to_vec(&req).map_err(|e| BridgeError::Malformed(e.to_string()))?;
         payload.push(b'\n');
 
         let mut guard = self.inner.lock().await;
@@ -74,20 +86,21 @@ impl RpcClient {
         let mut line = String::new();
         let n = guard.stdout.read_line(&mut line).await?;
         if n == 0 {
-            return Err(RpcError::Closed);
+            return Err(BridgeError::Closed);
         }
 
         let resp: Value = serde_json::from_str(line.trim())
-            .map_err(|e| RpcError::Malformed(e.to_string()))?;
+            .map_err(|e| BridgeError::Malformed(e.to_string()))?;
 
         if let Some(err) = resp.get("error") {
             let code = err.get("code").and_then(|v| v.as_i64()).unwrap_or(-1);
             let message = err.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            return Err(RpcError::Remote { code, message });
+            let data = err.get("data").cloned();
+            return Err(BridgeError::Remote(RpcError { code, message, data }));
         }
 
         resp.get("result")
             .cloned()
-            .ok_or_else(|| RpcError::Malformed("missing result".into()))
+            .ok_or_else(|| BridgeError::Malformed("missing result".into()))
     }
 }
