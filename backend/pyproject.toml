@@ -6,7 +6,9 @@ authors = [
     { name = "Mathieu Dolmen", email = "mathieu.dolmen@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.3",
+]
 
 [project.scripts]
 finp-rpc = "finp.rpc:main"
