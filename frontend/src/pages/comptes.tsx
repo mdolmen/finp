@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ImportDialog } from "@/components/ImportDialog";
 import { accountsApi, RpcError } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { fr } from "@/i18n/fr";
@@ -18,6 +19,7 @@ export function ComptesPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [importing, setImporting] = useState<Account | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -77,7 +79,7 @@ export function ComptesPage() {
                 <Wifi className="size-3.5" />
                 {fr.comptes.connect}
               </Button>
-              <Button size="sm" variant="ghost" disabled title={fr.comptes.importSoon}>
+              <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
                 {fr.comptes.import}
               </Button>
@@ -99,6 +101,15 @@ export function ComptesPage() {
         onOpenChange={setAddOpen}
         onCreated={() => refresh()}
       />
+
+      {importing && (
+        <ImportDialog
+          account={importing}
+          open={!!importing}
+          onOpenChange={(v) => !v && setImporting(null)}
+          onImported={refresh}
+        />
+      )}
     </div>
   );
 }
@@ -125,7 +136,7 @@ function AddAccountDialog({
     }
   }, [open]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
