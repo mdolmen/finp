@@ -20,24 +20,24 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M1 — Storage & domain core (backend, headless)
 
-- [ ] SQLite connection layer: open DB at OS-appropriate user data dir, WAL mode, foreign keys on.
-- [ ] Migration runner (numbered `.sql` files in `finp/db/migrations/`).
-- [ ] Schema v1:
+- [x] SQLite connection layer: open DB at OS-appropriate user data dir, WAL mode, foreign keys on.
+- [x] Migration runner (numbered `.sql` files in `finp/db/migrations/`).
+- [x] Schema v1:
     - `accounts(id, name, csv_mapping_json, created_at)`
     - `categories(id, name UNIQUE, is_builtin, display_order)` — seed `Virement interne` with `is_builtin=1`.
     - `operations(id, account_id, date, montant_cents INTEGER, libelle, type CHECK in ('debit','credit','internal'), category_id NULL, dedup_hash UNIQUE, created_at)`
     - `rules(id, name, category_id, priority INTEGER, predicate_json, enabled, created_at)`
     - FTS5 virtual table `operations_fts(libelle, content='operations', content_rowid='id')` + triggers.
-- [ ] Domain modules (pure Python, no Tauri):
+- [x] Domain modules (pure Python, no Tauri):
     - `finp.accounts` — CRUD.
     - `finp.categories` — CRUD, prevent delete/rename of built-in, prevent delete if referenced (require reassign).
     - `finp.operations` — insert with dedup, list with filters (date range, accounts, categories, types, "sans catégorie"), search (FTS5).
     - `finp.rules` — CRUD + reorder (priority).
-- [ ] Predicate registry: `Predicate` protocol with `matches(op) -> bool`. Implement `LibelleContains` and `MontantCompare` (>, <, ==). Serialize/deserialize via `predicate_json` with a `kind` discriminator.
-- [ ] Rules engine: `apply_rules(op)` walks rules in priority order, first match wins, never overwrites an existing category. `apply_rules_bulk()` over uncategorized ops.
-- [ ] Type derivation: on insert, set `type='debit'` if `montant<0` else `'credit'`. Flip to `'internal'` (and back) when the assigned category is/isn't `Virement interne`.
-- [ ] Event bus: in-process pub/sub (`finp.events`). Define events: `operation.created`, `operation.updated`, `operation.category_assigned`, `rule.matched`. No external subscribers yet — bus exists with no-op default.
-- [ ] Unit tests for: dedup, type derivation, rule first-match-wins, "no overwrite" guarantee, internal-flip via Virement interne.
+- [x] Predicate registry: `Predicate` protocol with `matches(op) -> bool`. Implement `LibelleContains` and `MontantCompare` (>, <, ==). Serialize/deserialize via `predicate_json` with a `kind` discriminator.
+- [x] Rules engine: `apply_rules(op)` walks rules in priority order, first match wins, never overwrites an existing category. `apply_rules_bulk()` over uncategorized ops.
+- [x] Type derivation: on insert, set `type='debit'` if `montant<0` else `'credit'`. Flip to `'internal'` (and back) when the assigned category is/isn't `Virement interne`.
+- [x] Event bus: in-process pub/sub (`finp.events`). Define events: `operation.created`, `operation.updated`, `operation.category_assigned`, `rule.matched`. No external subscribers yet — bus exists with no-op default.
+- [x] Unit tests for: dedup, type derivation, rule first-match-wins, "no overwrite" guarantee, internal-flip via Virement interne.
 
 ## M2 — IPC layer
 
