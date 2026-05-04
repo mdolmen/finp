@@ -26,6 +26,7 @@ from finp import __version__, db
 from finp.commands import accounts as account_cmds
 from finp.commands import categories as category_cmds
 from finp.commands import operations as operation_cmds
+from finp.commands import rules as rule_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
 
@@ -39,6 +40,7 @@ METHODS: dict[str, Command] = {
     **account_cmds.METHODS,
     **category_cmds.METHODS,
     **operation_cmds.METHODS,
+    **rule_cmds.METHODS,
 }
 
 
