@@ -41,11 +41,11 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M2 — IPC layer
 
-- [ ] Define a typed command surface (one Python function per Tauri command). Group: `accounts`, `categories`, `operations`, `rules`, `import`.
-- [ ] Schema validation at the boundary with `pydantic`.
-- [ ] Generate or hand-write matching TypeScript types in `frontend/src/lib/api/types.ts`.
-- [ ] Thin `invoke()` wrappers in `frontend/src/lib/api/*.ts` returning typed promises.
-- [ ] Error contract: backend errors → structured `{code, message}` → toast on the frontend.
+- [x] Define a typed command surface (one Python function per Tauri command). Group: `accounts`, `categories`, `operations`, `rules`, `import`.
+- [x] Schema validation at the boundary with `pydantic`.
+- [x] Generate or hand-write matching TypeScript types in `frontend/src/lib/api/types.ts`.
+- [x] Thin `invoke()` wrappers in `frontend/src/lib/api/*.ts` returning typed promises.
+- [x] Error contract: backend errors → structured `{code, message}` → toast on the frontend.
 
 ## M3 — Frontend shell
 
