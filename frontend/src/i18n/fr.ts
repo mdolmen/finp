@@ -78,6 +78,8 @@ export const fr = {
     confirmFailedHeader: "ligne(s) seront ignorée(s) à cause de ces erreurs :",
     imported: "Importées :",
     skipped: "Doublons ignorés :",
+    skippedExistingHeader:
+      "Opérations déjà présentes (rejetées comme doublons) :",
     failed: "Lignes en erreur",
     ruleAssigned: "Règles appliquées :",
   },

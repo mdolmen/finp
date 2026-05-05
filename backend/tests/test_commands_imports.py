@@ -18,7 +18,13 @@ def test_ingest_inserts_and_dedups(conn):
         {"date": "2026-01-01", "montant_cents": -100, "libelle": "Café"},
     ]
     r = _call(conn, "import.ingest", {"account_id": acc.id, "rows": rows})
-    assert r["result"] == {"imported": 2, "skipped": 1, "rule_assigned": 0}
+    assert r["result"]["imported"] == 2
+    assert r["result"]["skipped"] == 1
+    assert r["result"]["rule_assigned"] == 0
+    skipped = r["result"]["skipped_existing"]
+    assert len(skipped) == 1
+    assert skipped[0]["libelle"] == "Café"
+    assert skipped[0]["montant_cents"] == -100
 
 
 def test_ingest_triggers_rules(conn):

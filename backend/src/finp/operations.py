@@ -55,6 +55,24 @@ def _dedup_hash(account_id: int, date: str, montant_cents: int, libelle: str) ->
     return hashlib.sha256(payload).hexdigest()
 
 
+def find_by_content(
+    conn: sqlite3.Connection,
+    *,
+    account_id: int,
+    date: str,
+    montant_cents: int,
+    libelle: str,
+) -> Operation | None:
+    """Return the existing operation that would dedup-collide with these values."""
+    h = _dedup_hash(account_id, date, montant_cents, libelle)
+    row = conn.execute(
+        "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
+        " dedup_hash, created_at FROM operations WHERE dedup_hash = ?",
+        (h,),
+    ).fetchone()
+    return _row_to_op(row) if row else None
+
+
 def _derive_type(montant_cents: int, category_id: int | None, internal_id: int) -> OperationType:
     if category_id == internal_id:
         return "internal"

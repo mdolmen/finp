@@ -563,6 +563,45 @@ function DoneStep({
           ))}
         </ul>
       )}
+      {(result.skipped_existing ?? []).length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            {fr.import.skippedExistingHeader}
+          </p>
+          <div className="border border-border rounded-md overflow-hidden">
+            <div className="overflow-x-auto max-w-full">
+              <table className="text-xs w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="text-left font-medium px-3 py-1.5 whitespace-nowrap">
+                      Date
+                    </th>
+                    <th className="text-right font-medium px-3 py-1.5 whitespace-nowrap">
+                      Montant
+                    </th>
+                    <th className="text-left font-medium px-3 py-1.5">Libellé</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(result.skipped_existing ?? []).map((op) => (
+                    <tr key={op.id} className="border-b border-border last:border-0">
+                      <td className="px-3 py-1 whitespace-nowrap text-muted-foreground">
+                        {op.date}
+                      </td>
+                      <td className="px-3 py-1 whitespace-nowrap text-muted-foreground text-right tabular-nums">
+                        {(op.montant_cents / 100).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-1 text-muted-foreground">
+                        {op.libelle}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
       <DialogFooter>
         {failed > 0 && (
           <Button type="button" variant="ghost" onClick={onBack}>

@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from finp import operations, rules_engine
 from finp.commands._base import Command
+from finp.commands.operations import OperationOut
 
 
 class IngestRow(BaseModel):
@@ -34,11 +35,14 @@ class IngestResult(BaseModel):
     imported: int
     skipped: int
     rule_assigned: int
+    # Existing operations that collided with the incoming rows, so the user
+    # can verify visually that dedup did the right thing.
+    skipped_existing: list[OperationOut]
 
 
 def _ingest(conn: sqlite3.Connection, params: IngestParams) -> IngestResult:
     imported = 0
-    skipped = 0
+    skipped_existing: list[OperationOut] = []
     for row in params.rows:
         op = operations.insert(
             conn,
@@ -48,12 +52,25 @@ def _ingest(conn: sqlite3.Connection, params: IngestParams) -> IngestResult:
             libelle=row.libelle,
         )
         if op is None:
-            skipped += 1
+            existing = operations.find_by_content(
+                conn,
+                account_id=params.account_id,
+                date=row.date,
+                montant_cents=row.montant_cents,
+                libelle=row.libelle,
+            )
+            if existing is not None:
+                skipped_existing.append(OperationOut.model_validate(existing))
         else:
             imported += 1
 
     rule_assigned = rules_engine.apply_rules_bulk(conn) if params.apply_rules else 0
-    return IngestResult(imported=imported, skipped=skipped, rule_assigned=rule_assigned)
+    return IngestResult(
+        imported=imported,
+        skipped=len(skipped_existing),
+        rule_assigned=rule_assigned,
+        skipped_existing=skipped_existing,
+    )
 
 
 METHODS: dict[str, Command] = {

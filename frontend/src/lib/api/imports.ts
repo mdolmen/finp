@@ -1,4 +1,5 @@
 import { rpc } from "./client";
+import type { Operation } from "./types";
 
 export type IngestRow = {
   date: string;
@@ -10,6 +11,7 @@ export type IngestResult = {
   imported: number;
   skipped: number;
   rule_assigned: number;
+  skipped_existing: Operation[];
 };
 
 export const importsApi = {
