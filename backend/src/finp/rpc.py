@@ -24,6 +24,7 @@ from pydantic import BaseModel, ValidationError
 
 from finp import __version__, db
 from finp.commands import accounts as account_cmds
+from finp.commands import bilan as bilan_cmds
 from finp.commands import categories as category_cmds
 from finp.commands import imports as import_cmds
 from finp.commands import operations as operation_cmds
@@ -43,6 +44,7 @@ METHODS: dict[str, Command] = {
     **operation_cmds.METHODS,
     **rule_cmds.METHODS,
     **import_cmds.METHODS,
+    **bilan_cmds.METHODS,
 }
 
 
