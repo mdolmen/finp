@@ -97,13 +97,13 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M8 — Page "Bilan"
 
-- [ ] Filter bar (horizontal, multi-select): `Débits` (categories used by debit ops only), `Crédits` (categories used by credit ops only), `Comptes`. Use shadcn Combobox-style multi-selects.
-- [ ] Aggregation query: by month × category × type, over the rolling 12 plain months ending at the current month, EUR sums in cents.
-- [ ] Chart: grouped bar with two bars per month (expenses left, revenus right), stacked by category.
-    - [ ] Pick a chart lib — start with `recharts`; fall back to a small custom SVG if styling fights us.
-    - [ ] Alternating two shades of red (expenses) / green (revenus).
-    - [ ] Tooltip: category name + amount on segment hover.
-- [ ] Internal operations excluded.
+- [x] Filter bar (horizontal, multi-select): `Débits` (categories used by debit ops only), `Crédits` (categories used by credit ops only), `Comptes`. Use shadcn Combobox-style multi-selects.
+- [x] Aggregation query: by month × category × type, over the rolling 12 plain months ending at the current month, EUR sums in cents.
+- [x] Chart: grouped bar with two bars per month (expenses left, revenus right), stacked by category.
+    - [x] Pick a chart lib — start with `recharts`; fall back to a small custom SVG if styling fights us.
+    - [x] Alternating two shades of red (expenses) / green (revenus).
+    - [x] Tooltip: category name + amount on segment hover.
+- [x] Internal operations excluded.
 
 ## M9 — Polish pass
 

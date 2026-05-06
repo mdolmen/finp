@@ -32,6 +32,19 @@ export const fr = {
   categories: {
     title: "Catégories",
     placeholder: "Gestion des catégories à venir.",
+    empty: "Aucune catégorie. Ajoutez-en une pour commencer.",
+    builtinHint: "Catégorie système — non modifiable",
+    addTitle: "Ajouter une catégorie",
+    addDescription: "Choisissez un nom unique.",
+    namePlaceholder: "Alimentation",
+    errorDuplicate: "Une catégorie avec ce nom existe déjà.",
+    confirmDelete: "Supprimer la catégorie « {name} » ?",
+    reassignTitle: "Catégorie utilisée",
+    reassignBody:
+      "Des opérations utilisent encore cette catégorie. Choisissez une catégorie de destination, ou laissez vide pour effacer la catégorie de ces opérations.",
+    reassignSelect: "Catégorie de destination",
+    reassignNone: "Aucune (effacer)",
+    reassignConfirm: "Réassigner et supprimer",
   },
   regles: {
     title: "Règles",

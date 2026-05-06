@@ -17,9 +17,7 @@ export function OperationsPage() {
   return <Stub title={fr.operations.title} placeholder={fr.operations.placeholder} />;
 }
 
-export function CategoriesPage() {
-  return <Stub title={fr.categories.title} placeholder={fr.categories.placeholder} />;
-}
+export { CategoriesPage } from "./categories";
 
 export function ReglesPage() {
   return <Stub title={fr.regles.title} placeholder={fr.regles.placeholder} />;
