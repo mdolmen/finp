@@ -18,6 +18,12 @@ export const fr = {
   bilan: {
     title: "Bilan",
     placeholder: "Aperçu mensuel à venir.",
+    filterAccounts: "Comptes",
+    filterDebits: "Débits",
+    filterCredits: "Crédits",
+    empty: "Aucune opération sur les 12 derniers mois.",
+    debits: "Dépenses",
+    credits: "Revenus",
   },
   operations: {
     title: "Opérations",
@@ -53,6 +59,11 @@ export const fr = {
     add: "Ajouter",
     edit: "Modifier",
     delete: "Supprimer",
+    all: "Tous",
+    empty: "(aucune option)",
+    selected: "sélectionnés",
+    clearSelection: "Tout désélectionner",
+    noCategory: "Sans catégorie",
   },
   import: {
     title: "Importer des opérations — {name}",

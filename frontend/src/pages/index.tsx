@@ -11,9 +11,7 @@ function Stub({ title, placeholder }: StubProps) {
   );
 }
 
-export function BilanPage() {
-  return <Stub title={fr.bilan.title} placeholder={fr.bilan.placeholder} />;
-}
+export { BilanPage } from "./bilan";
 
 export function OperationsPage() {
   return <Stub title={fr.operations.title} placeholder={fr.operations.placeholder} />;
