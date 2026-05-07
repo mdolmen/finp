@@ -91,9 +91,20 @@ export function OperationsPage() {
 
   // Drop selection whenever the visible row set changes — selecting rows you
   // can't see anymore would be confusing.
-  useEffect(() => {
+  // Filter / search changes invalidate the visible row set; clearing is
+  // wired into each onChange below rather than via a useEffect, because
+  // useMemo'd dep arrays can change reference even when values haven't,
+  // which would re-fire the effect and clobber a fresh selection.
+
+  function setSearchAndClear(v: string) {
+    setSearch(v);
     setSelected(new Set());
-  }, [debouncedSearch, types, filters.uncategorizedOnly]);
+  }
+
+  function setFiltersAndClear(updater: (f: Filters) => Filters) {
+    setFilters(updater);
+    setSelected(new Set());
+  }
 
   function toggleSelect(opId: number, checked: boolean) {
     setSelected((prev) => {
@@ -173,7 +184,7 @@ export function OperationsPage() {
       <div className="flex items-center gap-2 mb-3">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => setSearchAndClear(e.target.value)}
           placeholder={fr.operations.searchPlaceholder}
           className="max-w-sm h-8"
         />
@@ -183,22 +194,22 @@ export function OperationsPage() {
         <FilterCheckbox
           label={fr.operations.filterSansCategorie}
           checked={filters.uncategorizedOnly}
-          onChange={(v) => setFilters((f) => ({ ...f, uncategorizedOnly: v }))}
+          onChange={(v) => setFiltersAndClear((f) => ({ ...f, uncategorizedOnly: v }))}
         />
         <FilterCheckbox
           label={fr.operations.filterDebits}
           checked={filters.debit}
-          onChange={(v) => setFilters((f) => ({ ...f, debit: v }))}
+          onChange={(v) => setFiltersAndClear((f) => ({ ...f, debit: v }))}
         />
         <FilterCheckbox
           label={fr.operations.filterCredits}
           checked={filters.credit}
-          onChange={(v) => setFilters((f) => ({ ...f, credit: v }))}
+          onChange={(v) => setFiltersAndClear((f) => ({ ...f, credit: v }))}
         />
         <FilterCheckbox
           label={fr.operations.filterInternal}
           checked={filters.internal}
-          onChange={(v) => setFilters((f) => ({ ...f, internal: v }))}
+          onChange={(v) => setFiltersAndClear((f) => ({ ...f, internal: v }))}
         />
       </div>
 
@@ -212,6 +223,7 @@ export function OperationsPage() {
         selected={selected}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
+        bottomBarVisible={selected.size > 0}
       />
 
       {selected.size > 0 && (
@@ -310,6 +322,7 @@ function OperationsList({
   selected,
   onToggleSelect,
   onToggleSelectAll,
+  bottomBarVisible,
 }: {
   ops: Operation[] | null;
   cats: Category[];
@@ -317,6 +330,7 @@ function OperationsList({
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
+  bottomBarVisible: boolean;
 }) {
   if (ops === null) {
     return <p className="text-sm text-muted-foreground">{fr.common.loading}</p>;
@@ -335,6 +349,7 @@ function OperationsList({
       onAssign={onAssign}
       selected={selected}
       onToggleSelect={onToggleSelect}
+      bottomBarVisible={bottomBarVisible}
       header={
         <div
           className={cn(
@@ -363,6 +378,7 @@ function VirtualizedList({
   onAssign,
   selected,
   onToggleSelect,
+  bottomBarVisible,
   header,
 }: {
   ops: Operation[];
@@ -370,6 +386,7 @@ function VirtualizedList({
   onAssign: (opId: number, value: string) => void;
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
+  bottomBarVisible: boolean;
   header: React.ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -381,7 +398,12 @@ function VirtualizedList({
   });
 
   return (
-    <div className="border border-border rounded-md flex-1 min-h-0 flex flex-col mb-16 overflow-hidden">
+    <div
+      className={cn(
+        "border border-border rounded-md flex-1 min-h-0 flex flex-col overflow-hidden",
+        bottomBarVisible ? "mb-16" : "mb-2",
+      )}
+    >
       {header}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
