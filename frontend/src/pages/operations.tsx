@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -160,7 +161,7 @@ export function OperationsPage() {
   }
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-6 py-5 flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold tracking-tight">{fr.operations.title}</h1>
         <Button size="sm" variant="outline" onClick={handleApplyRules}>
@@ -328,35 +329,89 @@ function OperationsList({
   const someSelected = !allSelected && ops.some((o) => selected.has(o.id));
 
   return (
-    <div className="border border-border rounded-md overflow-hidden mb-16">
-      <div
-        className={cn(
-          "grid gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border items-center",
-          GRID_COLS,
-        )}
-      >
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(v) => onToggleSelectAll(v === true)}
-          aria-label={fr.operations.selectAll}
-        />
-        <div>{fr.operations.columnDate}</div>
-        <div className="text-right">{fr.operations.columnMontant}</div>
-        <div>{fr.operations.columnLibelle}</div>
-        <div>{fr.operations.columnCategory}</div>
-      </div>
-      <ul className="divide-y divide-border">
-        {ops.map((op) => (
-          <OperationRow
-            key={op.id}
-            op={op}
-            cats={cats}
-            onAssign={onAssign}
-            selected={selected.has(op.id)}
-            onToggle={(checked) => onToggleSelect(op.id, checked)}
+    <VirtualizedList
+      ops={ops}
+      cats={cats}
+      onAssign={onAssign}
+      selected={selected}
+      onToggleSelect={onToggleSelect}
+      header={
+        <div
+          className={cn(
+            "grid gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border items-center",
+            GRID_COLS,
+          )}
+        >
+          <Checkbox
+            checked={allSelected ? true : someSelected ? "indeterminate" : false}
+            onCheckedChange={(v) => onToggleSelectAll(v === true)}
+            aria-label={fr.operations.selectAll}
           />
-        ))}
-      </ul>
+          <div>{fr.operations.columnDate}</div>
+          <div className="text-right">{fr.operations.columnMontant}</div>
+          <div>{fr.operations.columnLibelle}</div>
+          <div>{fr.operations.columnCategory}</div>
+        </div>
+      }
+    />
+  );
+}
+
+function VirtualizedList({
+  ops,
+  cats,
+  onAssign,
+  selected,
+  onToggleSelect,
+  header,
+}: {
+  ops: Operation[];
+  cats: Category[];
+  onAssign: (opId: number, value: string) => void;
+  selected: Set<number>;
+  onToggleSelect: (opId: number, checked: boolean) => void;
+  header: React.ReactNode;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: ops.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 12,
+  });
+
+  return (
+    <div className="border border-border rounded-md flex-1 min-h-0 flex flex-col mb-16 overflow-hidden">
+      {header}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          {virtualizer.getVirtualItems().map((vRow) => {
+            const op = ops[vRow.index];
+            return (
+              <div
+                key={op.id}
+                data-index={vRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${vRow.start}px)`,
+                }}
+              >
+                <OperationRow
+                  op={op}
+                  cats={cats}
+                  onAssign={onAssign}
+                  selected={selected.has(op.id)}
+                  onToggle={(checked) => onToggleSelect(op.id, checked)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -376,9 +431,9 @@ function OperationRow({
 }) {
   const value = op.category_id != null ? String(op.category_id) : NO_CATEGORY;
   return (
-    <li
+    <div
       className={cn(
-        "grid gap-3 px-3 py-1.5 items-center text-sm border-l-2",
+        "grid gap-3 px-3 py-1.5 items-center text-sm border-l-2 border-b border-b-border",
         GRID_COLS,
         op.type === "debit" && "border-l-debit/40",
         op.type === "credit" && "border-l-credit/40",
@@ -420,7 +475,7 @@ function OperationRow({
           </SelectContent>
         </Select>
       </div>
-    </li>
+    </div>
   );
 }
 
