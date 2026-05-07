@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ export function OperationsPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const types = useMemo<OperationType[]>(() => {
     const t: OperationType[] = [];
@@ -85,6 +87,40 @@ export function OperationsPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Drop selection whenever the visible row set changes — selecting rows you
+  // can't see anymore would be confusing.
+  useEffect(() => {
+    setSelected(new Set());
+  }, [debouncedSearch, types, filters.uncategorizedOnly]);
+
+  function toggleSelect(opId: number, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(opId);
+      else next.delete(opId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    if (!ops) return;
+    setSelected(checked ? new Set(ops.map((o) => o.id)) : new Set());
+  }
+
+  async function handleBulkAssign(categoryId: number | null) {
+    if (selected.size === 0) return;
+    setError(null);
+    setInfo(null);
+    try {
+      const ids = [...selected];
+      await operationsApi.bulkAssignCategory(ids, categoryId);
+      setSelected(new Set());
+      await refresh();
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }
 
   async function handleAssign(opId: number, value: string) {
     setInfo(null);
@@ -168,7 +204,81 @@ export function OperationsPage() {
       {error && <p className="text-sm text-destructive mb-2">{error}</p>}
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
 
-      <OperationsList ops={ops} cats={cats} onAssign={handleAssign} />
+      <OperationsList
+        ops={ops}
+        cats={cats}
+        onAssign={handleAssign}
+        selected={selected}
+        onToggleSelect={toggleSelect}
+        onToggleSelectAll={toggleSelectAll}
+      />
+
+      {selected.size > 0 && (
+        <BulkBar
+          count={selected.size}
+          cats={cats}
+          onAssign={handleBulkAssign}
+          onDeselect={() => setSelected(new Set())}
+        />
+      )}
+    </div>
+  );
+}
+
+function BulkBar({
+  count,
+  cats,
+  onAssign,
+  onDeselect,
+}: {
+  count: number;
+  cats: Category[];
+  onAssign: (categoryId: number | null) => void;
+  onDeselect: () => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 bg-popover border border-border rounded-md shadow-lg text-sm">
+      <span className="text-muted-foreground pr-1">
+        {fr.operations.selectedCount.replace("{n}", String(count))}
+      </span>
+      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="outline">
+            {fr.operations.bulkAssign}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-1" align="center">
+          <ul className="max-h-72 overflow-y-auto">
+            {cats.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAssign(c.id);
+                    setPickerOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-md hover:bg-accent cursor-pointer"
+                >
+                  {c.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </PopoverContent>
+      </Popover>
+      <Button size="sm" variant="ghost" onClick={() => onAssign(null)}>
+        {fr.operations.bulkClear}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={onDeselect}
+        className="text-muted-foreground"
+        aria-label={fr.operations.bulkDeselect}
+      >
+        <X className="size-3.5" />
+      </Button>
     </div>
   );
 }
@@ -190,14 +300,22 @@ function FilterCheckbox({
   );
 }
 
+const GRID_COLS = "grid-cols-[28px_100px_120px_1fr_220px]";
+
 function OperationsList({
   ops,
   cats,
   onAssign,
+  selected,
+  onToggleSelect,
+  onToggleSelectAll,
 }: {
   ops: Operation[] | null;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
+  selected: Set<number>;
+  onToggleSelect: (opId: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
 }) {
   if (ops === null) {
     return <p className="text-sm text-muted-foreground">{fr.common.loading}</p>;
@@ -206,9 +324,22 @@ function OperationsList({
     return <p className="text-sm text-muted-foreground">{fr.operations.empty}</p>;
   }
 
+  const allSelected = ops.length > 0 && ops.every((o) => selected.has(o.id));
+  const someSelected = !allSelected && ops.some((o) => selected.has(o.id));
+
   return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <div className="grid grid-cols-[100px_120px_1fr_220px] gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border">
+    <div className="border border-border rounded-md overflow-hidden mb-16">
+      <div
+        className={cn(
+          "grid gap-3 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border items-center",
+          GRID_COLS,
+        )}
+      >
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={(v) => onToggleSelectAll(v === true)}
+          aria-label={fr.operations.selectAll}
+        />
         <div>{fr.operations.columnDate}</div>
         <div className="text-right">{fr.operations.columnMontant}</div>
         <div>{fr.operations.columnLibelle}</div>
@@ -216,7 +347,14 @@ function OperationsList({
       </div>
       <ul className="divide-y divide-border">
         {ops.map((op) => (
-          <OperationRow key={op.id} op={op} cats={cats} onAssign={onAssign} />
+          <OperationRow
+            key={op.id}
+            op={op}
+            cats={cats}
+            onAssign={onAssign}
+            selected={selected.has(op.id)}
+            onToggle={(checked) => onToggleSelect(op.id, checked)}
+          />
         ))}
       </ul>
     </div>
@@ -227,21 +365,32 @@ function OperationRow({
   op,
   cats,
   onAssign,
+  selected,
+  onToggle,
 }: {
   op: Operation;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
+  selected: boolean;
+  onToggle: (checked: boolean) => void;
 }) {
   const value = op.category_id != null ? String(op.category_id) : NO_CATEGORY;
   return (
     <li
       className={cn(
-        "grid grid-cols-[100px_120px_1fr_220px] gap-3 px-3 py-1.5 items-center text-sm border-l-2",
+        "grid gap-3 px-3 py-1.5 items-center text-sm border-l-2",
+        GRID_COLS,
         op.type === "debit" && "border-l-debit/40",
         op.type === "credit" && "border-l-credit/40",
         op.type === "internal" && "border-l-internal/40",
+        selected && "bg-accent/40",
       )}
     >
+      <Checkbox
+        checked={selected}
+        onCheckedChange={(v) => onToggle(v === true)}
+        aria-label={`Sélectionner ${op.libelle}`}
+      />
       <div className="text-muted-foreground tabular-nums">{formatDate(op.date)}</div>
       <div
         className={cn(
