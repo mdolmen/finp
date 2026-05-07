@@ -31,9 +31,6 @@ export function AppLayout() {
           >
             <Menu className="size-4" />
           </button>
-          <span className="text-sm font-medium tracking-tight">
-            {fr.app.title}
-          </span>
         </header>
         <main className="flex-1 overflow-auto">
           <Outlet />
