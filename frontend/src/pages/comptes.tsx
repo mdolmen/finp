@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { accountsApi, RpcError } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { fr } from "@/i18n/fr";
@@ -20,6 +21,7 @@ export function ComptesPage() {
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importing, setImporting] = useState<Account | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -33,10 +35,7 @@ export function ComptesPage() {
     refresh();
   }, [refresh]);
 
-  async function handleDelete(account: Account) {
-    if (!window.confirm(`Supprimer le compte « ${account.name} » et toutes ses opérations ?`)) {
-      return;
-    }
+  async function performDelete(account: Account) {
     try {
       await accountsApi.delete(account.id);
       await refresh();
@@ -86,7 +85,7 @@ export function ComptesPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleDelete(acc)}
+                onClick={() => setDeleteConfirm(acc)}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-3.5" />
@@ -110,6 +109,20 @@ export function ComptesPage() {
           onImported={refresh}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(v) => !v && setDeleteConfirm(null)}
+        title={
+          deleteConfirm
+            ? fr.comptes.confirmDelete.replace("{name}", deleteConfirm.name)
+            : ""
+        }
+        description={fr.comptes.confirmDeleteBody}
+        confirmLabel={fr.common.delete}
+        destructive
+        onConfirm={() => deleteConfirm && performDelete(deleteConfirm)}
+      />
     </div>
   );
 }

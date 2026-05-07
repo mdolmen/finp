@@ -61,6 +61,8 @@ export const fr = {
     addDescription: "Donnez-lui un nom pour le distinguer.",
     namePlaceholder: "Compte courant",
     errorDuplicate: "Un compte avec ce nom existe déjà.",
+    confirmDelete: "Supprimer le compte « {name} » ?",
+    confirmDeleteBody: "Toutes ses opérations seront supprimées.",
   },
   common: {
     loading: "Chargement…",

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { categoriesApi, RpcError } from "@/lib/api";
 import type { Category } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fr } from "@/i18n/fr";
 
 export function CategoriesPage() {
@@ -27,6 +28,7 @@ export function CategoriesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [reassigning, setReassigning] = useState<Category | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -40,8 +42,7 @@ export function CategoriesPage() {
     refresh();
   }, [refresh]);
 
-  async function handleDelete(cat: Category) {
-    if (!window.confirm(fr.categories.confirmDelete.replace("{name}", cat.name))) return;
+  async function performDelete(cat: Category) {
     try {
       await categoriesApi.delete(cat.id);
       await refresh();
@@ -87,7 +88,7 @@ export function CategoriesPage() {
                 <CategoryRow
                   cat={cat}
                   onEdit={() => setEditing(cat)}
-                  onDelete={() => handleDelete(cat)}
+                  onDelete={() => setDeleteConfirm(cat)}
                 />
               )}
             </li>
@@ -96,6 +97,19 @@ export function CategoriesPage() {
       )}
 
       <AddCategoryDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refresh} />
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(v) => !v && setDeleteConfirm(null)}
+        title={
+          deleteConfirm
+            ? fr.categories.confirmDelete.replace("{name}", deleteConfirm.name)
+            : ""
+        }
+        confirmLabel={fr.common.delete}
+        destructive
+        onConfirm={() => deleteConfirm && performDelete(deleteConfirm)}
+      />
 
       {reassigning && cats && (
         <ReassignDialog

@@ -70,10 +70,10 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M5 — Page "Catégories"
 
-- [ ] Flat alphabetical list.
-- [ ] [Ajouter] button top-right → modal (name only).
+- [x] Flat alphabetical list.
+- [x] [Ajouter] button top-right → modal (name only).
 - [ ] Inline rename, delete (with confirm + reassign-or-block when referenced).
-- [ ] Built-in `Virement interne` is shown but not editable / deletable.
+- [x] Built-in `Virement interne` is shown but not editable / deletable.
 
 ## M6 — Page "Opérations"
 
