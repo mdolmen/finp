@@ -20,6 +20,7 @@ class AccountOut(BaseModel):
     name: str
     csv_mapping: dict[str, Any] | None
     created_at: str
+    last_import_at: str | None
 
 
 class CreateParams(BaseModel):

@@ -8,6 +8,7 @@ export type Account = {
   name: string;
   csv_mapping: Record<string, unknown> | null;
   created_at: string;
+  last_import_at: string | null;
 };
 
 export type Category = {

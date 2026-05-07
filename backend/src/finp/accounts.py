@@ -24,6 +24,10 @@ class Account:
     name: str
     csv_mapping: dict[str, Any] | None
     created_at: str
+    # MAX(operations.created_at) for this account — i.e. the timestamp of
+    # the most recent successful insert. Re-imports of the same rows
+    # don't bump it (dedup skips them), so it tracks "last new data".
+    last_import_at: str | None
 
 
 def _row_to_account(row: sqlite3.Row) -> Account:
@@ -33,7 +37,15 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         name=row["name"],
         csv_mapping=json.loads(raw) if raw else None,
         created_at=row["created_at"],
+        last_import_at=row["last_import_at"],
     )
+
+
+_SELECT_ACCOUNT = (
+    "SELECT a.id, a.name, a.csv_mapping_json, a.created_at,"
+    " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at"
+    " FROM accounts a"
+)
 
 
 def create(conn: sqlite3.Connection, name: str) -> Account:
@@ -44,10 +56,7 @@ def create(conn: sqlite3.Connection, name: str) -> Account:
 
 def get(conn: sqlite3.Connection, account_id: int) -> Account:
     """Fetch an account by id. Raises ``AccountNotFoundError`` if missing."""
-    row = conn.execute(
-        "SELECT id, name, csv_mapping_json, created_at FROM accounts WHERE id = ?",
-        (account_id,),
-    ).fetchone()
+    row = conn.execute(f"{_SELECT_ACCOUNT} WHERE a.id = ?", (account_id,)).fetchone()
     if row is None:
         raise AccountNotFoundError(f"account id={account_id}")
     return _row_to_account(row)
@@ -55,9 +64,7 @@ def get(conn: sqlite3.Connection, account_id: int) -> Account:
 
 def list_all(conn: sqlite3.Connection) -> list[Account]:
     """Return all accounts ordered by name."""
-    rows = conn.execute(
-        "SELECT id, name, csv_mapping_json, created_at FROM accounts ORDER BY name"
-    ).fetchall()
+    rows = conn.execute(f"{_SELECT_ACCOUNT} ORDER BY a.name").fetchall()
     return [_row_to_account(r) for r in rows]
 
 

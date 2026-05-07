@@ -16,6 +16,21 @@ import { accountsApi, RpcError } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { fr } from "@/i18n/fr";
 
+const DATE_TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatLastImport(iso: string | null): string {
+  if (!iso) return fr.comptes.neverImported;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return fr.comptes.lastImport.replace("{date}", DATE_TIME_FMT.format(d));
+}
+
 export function ComptesPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +83,9 @@ export function ComptesPage() {
               className="flex items-center gap-2 px-3 py-2 text-sm"
             >
               <span className="flex-1 font-medium">{acc.name}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {formatLastImport(acc.last_import_at)}
+              </span>
               <Button
                 size="sm"
                 variant="ghost"

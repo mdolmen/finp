@@ -81,6 +81,8 @@ export const fr = {
     errorDuplicate: "Un compte avec ce nom existe déjà.",
     confirmDelete: "Supprimer le compte « {name} » ?",
     confirmDeleteBody: "Toutes ses opérations seront supprimées.",
+    lastImport: "Dernier import : {date}",
+    neverImported: "Jamais importé",
   },
   common: {
     loading: "Chargement…",
