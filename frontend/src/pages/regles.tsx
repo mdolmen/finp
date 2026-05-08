@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -79,6 +94,29 @@ export function ReglesPage() {
     }
   }
 
+  async function handleReorder(categoryId: number, orderedIds: number[]) {
+    // Optimistic: reorder locally first, then persist. On failure, roll back
+    // by refetching from the server.
+    setRules((prev) => {
+      if (!prev) return prev;
+      const inGroup = prev.filter((r) => r.category_id === categoryId);
+      const others = prev.filter((r) => r.category_id !== categoryId);
+      const byId = new Map(inGroup.map((r) => [r.id, r]));
+      const reordered = orderedIds.map((id, idx) => {
+        const r = byId.get(id);
+        return r ? { ...r, priority: idx } : null;
+      });
+      const cleaned = reordered.filter((r): r is Rule => r !== null);
+      return [...others, ...cleaned];
+    });
+    try {
+      await rulesApi.reorderInCategory(categoryId, orderedIds);
+    } catch (e) {
+      setError(formatError(e));
+      await refresh();
+    }
+  }
+
   const groups = groupByCategory(rules ?? [], cats);
 
   return (
@@ -107,22 +145,15 @@ export function ReglesPage() {
       ) : (
         <div className="space-y-5">
           {groups.map(({ category, rules: groupRules }) => (
-            <section key={category.id}>
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5 px-1">
-                {category.name}
-              </h2>
-              <ul className="border border-border rounded-md divide-y divide-border">
-                {groupRules.map((r) => (
-                  <RuleRow
-                    key={r.id}
-                    rule={r}
-                    onToggle={(en) => handleToggleEnabled(r, en)}
-                    onEdit={() => setEditing(r)}
-                    onDelete={() => setDeleting(r)}
-                  />
-                ))}
-              </ul>
-            </section>
+            <SortableGroup
+              key={category.id}
+              category={category}
+              rules={groupRules}
+              onToggleEnabled={handleToggleEnabled}
+              onEdit={setEditing}
+              onDelete={setDeleting}
+              onReorder={handleReorder}
+            />
           ))}
         </div>
       )}
@@ -157,7 +188,61 @@ export function ReglesPage() {
   );
 }
 
-function RuleRow({
+function SortableGroup({
+  category,
+  rules,
+  onToggleEnabled,
+  onEdit,
+  onDelete,
+  onReorder,
+}: {
+  category: Category;
+  rules: Rule[];
+  onToggleEnabled: (rule: Rule, enabled: boolean) => void;
+  onEdit: (rule: Rule) => void;
+  onDelete: (rule: Rule) => void;
+  onReorder: (categoryId: number, orderedIds: number[]) => void;
+}) {
+  // 8px activation distance: clicks on the row's buttons (edit/delete/checkbox)
+  // don't get hijacked by drag detection.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const items = rules.map((r) => r.id);
+
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = items.indexOf(active.id as number);
+    const newIndex = items.indexOf(over.id as number);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = arrayMove(items, oldIndex, newIndex);
+    onReorder(category.id, next);
+  }
+
+  return (
+    <section>
+      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5 px-1">
+        {category.name}
+      </h2>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          <ul className="border border-border rounded-md divide-y divide-border">
+            {rules.map((r) => (
+              <SortableRuleRow
+                key={r.id}
+                rule={r}
+                onToggle={(en) => onToggleEnabled(r, en)}
+                onEdit={() => onEdit(r)}
+                onDelete={() => onDelete(r)}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+    </section>
+  );
+}
+
+function SortableRuleRow({
   rule,
   onToggle,
   onEdit,
@@ -168,8 +253,28 @@ function RuleRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: rule.id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    background: isDragging ? "var(--accent)" : undefined,
+  };
+
   return (
-    <li className="flex items-center gap-3 px-3 py-2 text-sm">
+    <li ref={setNodeRef} style={style} className="flex items-center gap-2 px-2 py-2 text-sm">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1 -my-1"
+        aria-label="Réordonner"
+      >
+        <GripVertical className="size-3.5" />
+      </button>
       <Checkbox
         checked={rule.enabled}
         onCheckedChange={(v) => onToggle(v === true)}
