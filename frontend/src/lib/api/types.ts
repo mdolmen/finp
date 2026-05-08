@@ -19,6 +19,7 @@ export type Category = {
   name: string;
   is_builtin: boolean;
   display_order: number;
+  is_recurring: boolean;
 };
 
 export type Operation = {

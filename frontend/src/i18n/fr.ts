@@ -84,6 +84,8 @@ export const fr = {
     reassignSelect: "Catégorie de destination",
     reassignNone: "Aucune (effacer)",
     reassignConfirm: "Réassigner et supprimer",
+    recurringOn: "Catégorie récurrente — projetée sur les mois à venir",
+    recurringOff: "Marquer comme récurrente",
   },
   regles: {
     title: "Règles",

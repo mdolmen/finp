@@ -32,6 +32,7 @@ class Category:
     name: str
     is_builtin: bool
     display_order: int
+    is_recurring: bool
 
 
 def _row_to_category(row: sqlite3.Row) -> Category:
@@ -40,6 +41,7 @@ def _row_to_category(row: sqlite3.Row) -> Category:
         name=row["name"],
         is_builtin=bool(row["is_builtin"]),
         display_order=row["display_order"],
+        is_recurring=bool(row["is_recurring"]),
     )
 
 
@@ -55,7 +57,7 @@ def create(conn: sqlite3.Connection, name: str) -> Category:
 def get(conn: sqlite3.Connection, category_id: int) -> Category:
     """Fetch a category by id. Raises ``CategoryNotFoundError`` if missing."""
     row = conn.execute(
-        "SELECT id, name, is_builtin, display_order FROM categories WHERE id = ?",
+        "SELECT id, name, is_builtin, display_order, is_recurring FROM categories WHERE id = ?",
         (category_id,),
     ).fetchone()
     if row is None:
@@ -66,7 +68,7 @@ def get(conn: sqlite3.Connection, category_id: int) -> Category:
 def get_by_name(conn: sqlite3.Connection, name: str) -> Category | None:
     """Look up a category by exact name. Returns ``None`` if not found."""
     row = conn.execute(
-        "SELECT id, name, is_builtin, display_order FROM categories WHERE name = ?",
+        "SELECT id, name, is_builtin, display_order, is_recurring FROM categories WHERE name = ?",
         (name,),
     ).fetchone()
     return _row_to_category(row) if row else None
@@ -75,7 +77,8 @@ def get_by_name(conn: sqlite3.Connection, name: str) -> Category | None:
 def list_all(conn: sqlite3.Connection) -> list[Category]:
     """Return all categories ordered alphabetically (case-insensitive)."""
     rows = conn.execute(
-        "SELECT id, name, is_builtin, display_order FROM categories ORDER BY name COLLATE NOCASE"
+        "SELECT id, name, is_builtin, display_order, is_recurring FROM categories"
+        " ORDER BY name COLLATE NOCASE"
     ).fetchall()
     return [_row_to_category(r) for r in rows]
 
@@ -106,6 +109,17 @@ def delete(conn: sqlite3.Connection, category_id: int) -> None:
         raise CategoryInUseError(f"category id={category_id} has {refcount} operation(s)")
 
     conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+
+
+def set_recurring(conn: sqlite3.Connection, category_id: int, is_recurring: bool) -> Category:
+    """Toggle whether this category's operations are projected as recurring."""
+    cur = conn.execute(
+        "UPDATE categories SET is_recurring = ? WHERE id = ?",
+        (1 if is_recurring else 0, category_id),
+    )
+    if cur.rowcount == 0:
+        raise CategoryNotFoundError(f"category id={category_id}")
+    return get(conn, category_id)
 
 
 def reassign_operations(

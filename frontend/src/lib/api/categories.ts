@@ -12,4 +12,6 @@ export const categoriesApi = {
       from_id: fromId,
       to_id: toId,
     }),
+  setRecurring: (id: number, isRecurring: boolean) =>
+    rpc<Category>("categories.set_recurring", { id, is_recurring: isRecurring }),
 };

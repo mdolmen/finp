@@ -116,8 +116,7 @@ def set_initial_balance(
 ) -> Account:
     """Set the opening balance + its anchor date for the running solde."""
     cur = conn.execute(
-        "UPDATE accounts SET initial_balance_cents = ?, initial_balance_date = ?"
-        " WHERE id = ?",
+        "UPDATE accounts SET initial_balance_cents = ?, initial_balance_date = ? WHERE id = ?",
         (cents, date, account_id),
     )
     if cur.rowcount == 0:

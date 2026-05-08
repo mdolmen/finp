@@ -70,9 +70,7 @@ def _set_csv_mapping(conn: sqlite3.Connection, params: SetCsvMappingParams) -> A
     return AccountOut.model_validate(accounts.set_csv_mapping(conn, params.id, params.mapping))
 
 
-def _set_initial_balance(
-    conn: sqlite3.Connection, params: SetInitialBalanceParams
-) -> AccountOut:
+def _set_initial_balance(conn: sqlite3.Connection, params: SetInitialBalanceParams) -> AccountOut:
     return AccountOut.model_validate(
         accounts.set_initial_balance(conn, params.id, cents=params.cents, date=params.date)
     )
