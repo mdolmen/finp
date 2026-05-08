@@ -1,12 +1,22 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fr } from "@/i18n/fr";
 import { Sidebar } from "./Sidebar";
 
+const PAGE_TITLES: Record<string, string> = {
+  "/bilan": fr.bilan.title,
+  "/operations": fr.operations.title,
+  "/categories": fr.categories.title,
+  "/regles": fr.regles.title,
+  "/comptes": fr.comptes.title,
+};
+
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { pathname } = useLocation();
+  const title = PAGE_TITLES[pathname] ?? "";
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -31,6 +41,9 @@ export function AppLayout() {
           >
             <Menu className="size-4" />
           </button>
+          {title && (
+            <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+          )}
         </header>
         <main className="flex-1 overflow-auto">
           <Outlet />

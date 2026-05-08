@@ -123,10 +123,6 @@ export function BilanPage() {
 
   return (
     <div className="px-6 py-5">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold tracking-tight">{fr.bilan.title}</h1>
-      </div>
-
       <div className="flex flex-wrap gap-2 mb-5">
         <MultiSelect
           label={fr.bilan.filterAccounts}

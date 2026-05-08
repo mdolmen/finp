@@ -190,8 +190,7 @@ export function OperationsPage() {
 
   return (
     <div className="px-6 py-5 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold tracking-tight">{fr.operations.title}</h1>
+      <div className="flex items-center justify-end mb-4">
         <Button size="sm" variant="outline" onClick={handleApplyRules}>
           <Sparkles className="size-3.5" />
           {fr.operations.applyRules}

@@ -134,8 +134,7 @@ export function ReglesPage() {
 
   return (
     <div className="px-6 py-5 max-w-3xl">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold tracking-tight">{fr.regles.title}</h1>
+      <div className="flex items-center justify-end mb-4">
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={handleApplyNow}>
             <Sparkles className="size-3.5" />
