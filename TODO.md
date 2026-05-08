@@ -86,7 +86,7 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [x] Category assignment uses a single flat select listing all categories (alphabetical).
 - [x] Pagination or virtualized list — pick virtualization (`@tanstack/react-virtual`) since exports can be large.
 - [x] [Appliquer les règles] button (runs `apply_rules_bulk` on uncategorized).
-- [ ] "Montant" filter beside the search bar (greater, lesser, equal)
+- [x] "Montant" filter beside the search bar (greater, lesser, equal)
 
 ## M7 — Page "Règles"
 
