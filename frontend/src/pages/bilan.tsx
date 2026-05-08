@@ -4,6 +4,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Customized,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -454,12 +456,17 @@ function realIds(ids: number[]): number[] | null {
 
 type ChartRow = { month: string; [key: string]: number | string };
 
-type BarSeries = {
-  key: string;
+type SlotMeta = {
   categoryName: string;
-  type: "debit" | "credit";
-  totalCents: number; // total over the whole window — used for sort + shade rank
+  valueEuros: number;
   isPlanned: boolean;
+  fill: string;
+};
+
+type SlotSeries = {
+  dataKey: string;
+  type: "debit" | "credit";
+  slot: number;
 };
 
 function BilanChart({
@@ -479,16 +486,13 @@ function BilanChart({
     return <p className="text-sm text-muted-foreground">{fr.bilan.empty}</p>;
   }
 
-  const debitCount = shaped.series.filter((s) => s.type === "debit").length;
-  const creditCount = shaped.series.filter((s) => s.type === "credit").length;
-
   return (
     <div className="border border-border rounded-md p-3">
       <div className="h-[399px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={shaped.data}
-            margin={{ top: 8, right: 12, left: 0, bottom: 24 }}
+            margin={{ top: 18, right: 12, left: 0, bottom: 4 }}
             barGap={0}
             barCategoryGap="14%"
           >
@@ -498,10 +502,9 @@ function BilanChart({
               interval={0}
               tickLine={false}
               axisLine={{ stroke: "var(--border)" }}
-              tick={
-                <MonthDiffTick diffByMonth={shaped.diffByMonth} />
-              }
-              height={48}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              tickFormatter={formatMonth}
+              height={20}
             />
             <YAxis
               tickFormatter={(v) => formatEuros(v as number, { compact: true })}
@@ -516,20 +519,30 @@ function BilanChart({
               cursor={{ fill: "var(--accent)", opacity: 0.25 }}
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length || hoveredStack === null) return null;
+                const month = String(label);
                 const items = payload
                   .map((p) => {
-                    const series = shaped.series.find((s) => s.key === p.dataKey);
-                    return series && series.type === hoveredStack
-                      ? { series, value: p.value as number, color: p.color }
-                      : null;
+                    const dk = String(p.dataKey);
+                    const m = dk.match(/^s(\d+)_(debit|credit)$/);
+                    if (!m || m[2] !== hoveredStack) return null;
+                    const slot = parseInt(m[1], 10);
+                    const meta = shaped.metaByMonthSlot.get(`${month}|${m[2]}|${slot}`);
+                    const value = (p.value as number | undefined) ?? 0;
+                    if (!meta || value <= 0) return null;
+                    return {
+                      meta,
+                      value,
+                      color: meta.fill,
+                      key: `${month}|${m[2]}|${slot}`,
+                    };
                   })
-                  .filter((x): x is NonNullable<typeof x> => x !== null && x.value > 0)
+                  .filter((x): x is NonNullable<typeof x> => x !== null)
                   .sort((a, b) => a.value - b.value);
                 if (items.length === 0) return null;
                 return (
                   <div className="bg-popover border border-border rounded-md px-3 py-2 text-xs shadow-md">
                     <p className="font-medium mb-1">
-                      {formatMonth(String(label))}
+                      {formatMonth(month)}
                       {" — "}
                       <span
                         style={{
@@ -544,13 +557,13 @@ function BilanChart({
                     </p>
                     <ul className="space-y-0.5">
                       {items.map((it) => (
-                        <li key={it.series.key} className="flex items-center gap-2">
+                        <li key={it.key} className="flex items-center gap-2">
                           <span
                             className="size-2 rounded-sm"
                             style={{ background: it.color }}
                           />
                           <span className="text-muted-foreground">
-                            {it.series.categoryName}
+                            {it.meta.categoryName}
                           </span>
                           <span className="ml-auto tabular-nums">
                             {formatEuros(it.value)}
@@ -562,39 +575,53 @@ function BilanChart({
                 );
               }}
             />
-            {/* Render credit bars FIRST so they appear on the LEFT of each
-                month group; debits FIRST inside each stack so the largest
-                magnitudes (sorted desc) anchor the bottom of the column. */}
+            {/* One Bar per (slot, side). Credits first → LEFT of each
+                month group; within a side, slot 0 sits at the bottom and
+                holds that month's largest share. */}
             {shaped.series.map((s) => {
-              const rank = s.type === "debit"
-                ? shaped.series
-                    .filter((x) => x.type === "debit")
-                    .findIndex((x) => x.key === s.key)
-                : shaped.series
-                    .filter((x) => x.type === "credit")
-                    .findIndex((x) => x.key === s.key);
-              const total = s.type === "debit" ? debitCount : creditCount;
-              const fill = s.isPlanned ? "transparent" : stackShade(s.type, rank, total);
               const dimmed = hoveredStack !== null && hoveredStack !== s.type;
-              const accentStroke =
-                s.type === "debit" ? "var(--debit)" : "var(--credit)";
               return (
                 <Bar
-                  key={s.key}
-                  dataKey={s.key}
+                  key={s.dataKey}
+                  dataKey={s.dataKey}
                   stackId={s.type}
-                  fill={fill}
                   fillOpacity={dimmed ? 0.3 : 1}
-                  stroke={s.isPlanned ? accentStroke : hoveredStack === s.type ? "var(--foreground)" : undefined}
-                  strokeOpacity={s.isPlanned ? 0.7 : hoveredStack === s.type ? 0.25 : 0}
-                  strokeWidth={s.isPlanned ? 1.5 : hoveredStack === s.type ? 1 : 0}
-                  strokeDasharray={s.isPlanned ? "4 3" : undefined}
                   onMouseEnter={() => setHoveredStack(s.type)}
                   onMouseLeave={() => setHoveredStack(null)}
                   isAnimationActive={false}
-                />
+                >
+                  {shaped.data.map((row, i) => {
+                    const meta = shaped.metaByMonthSlot.get(
+                      `${row.month}|${s.type}|${s.slot}`,
+                    );
+                    if (!meta) {
+                      return <Cell key={i} fill="transparent" />;
+                    }
+                    const accent =
+                      s.type === "debit" ? "var(--debit)" : "var(--credit)";
+                    return (
+                      <Cell
+                        key={i}
+                        fill={meta.fill}
+                        stroke={meta.isPlanned ? accent : undefined}
+                        strokeOpacity={meta.isPlanned ? 0.7 : 0}
+                        strokeWidth={meta.isPlanned ? 1.5 : 0}
+                        strokeDasharray={meta.isPlanned ? "4 3" : undefined}
+                      />
+                    );
+                  })}
+                </Bar>
               );
             })}
+            <Customized
+              component={(props: unknown) => (
+                <DiffOverlay
+                  {...(props as DiffOverlayChartProps)}
+                  diffByMonth={shaped.diffByMonth}
+                  monthTotals={shaped.monthTotals}
+                />
+              )}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -602,116 +629,161 @@ function BilanChart({
   );
 }
 
-function MonthDiffTick({
+type DiffOverlayChartProps = {
+  yAxisMap?: Record<string, { scale: (v: number) => number }>;
+  formattedGraphicalItems?: {
+    props: { data: { x: number; width: number; payload: { month: string } }[] };
+  }[];
+};
+
+function DiffOverlay({
+  yAxisMap,
+  formattedGraphicalItems,
   diffByMonth,
-  ...props
-}: {
+  monthTotals,
+}: DiffOverlayChartProps & {
   diffByMonth: Map<string, number>;
-  // recharts injects these; we don't model the full type.
-  x?: number;
-  y?: number;
-  payload?: { value: string };
+  monthTotals: Map<string, { debitEuros: number; creditEuros: number }>;
 }) {
-  const { x = 0, y = 0, payload } = props;
-  const month = payload?.value ?? "";
-  const diff = diffByMonth.get(month);
+  if (!yAxisMap || !formattedGraphicalItems?.length) return null;
+  const yAxis = Object.values(yAxisMap)[0];
+  if (!yAxis) return null;
+  const yScale = yAxis.scale;
+
+  // The first bar group holds one entry per month with its pixel x and
+  // bar width. Anchor the diff label at the right edge of the credit bar
+  // (which equals the left edge of the debit bar) so it sits centred over
+  // the month group.
+  const firstBar = formattedGraphicalItems[0];
+  if (!firstBar) return null;
+
+  const labels: { x: number; y: number; diff: number }[] = [];
+  for (const point of firstBar.props.data) {
+    const month = point.payload.month;
+    const totals = monthTotals.get(month);
+    const diff = diffByMonth.get(month);
+    if (!totals || diff === undefined) continue;
+    const tallest = Math.max(totals.debitEuros, totals.creditEuros);
+    if (tallest <= 0) continue;
+    const x = point.x + point.width;
+    const y = yScale(tallest) - 4;
+    labels.push({ x, y, diff });
+  }
+
   return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        textAnchor="middle"
-        dy={12}
-        fill="var(--muted-foreground)"
-        style={{ fontSize: 11 }}
-      >
-        {formatMonth(month)}
-      </text>
-      {diff !== undefined && (
+    <g>
+      {labels.map((l, i) => (
         <text
+          key={i}
+          x={l.x}
+          y={l.y}
           textAnchor="middle"
-          dy={28}
-          fill={diff >= 0 ? "var(--credit)" : "var(--debit)"}
-          style={{ fontSize: 10, fontWeight: 500 }}
+          fill={l.diff >= 0 ? "var(--credit)" : "var(--debit)"}
+          style={{ fontSize: 10, fontWeight: 600 }}
         >
-          {(diff >= 0 ? "+" : "") + formatEuros(diff, { compact: true })}
+          {(l.diff >= 0 ? "+" : "") + formatEuros(l.diff, { compact: true })}
         </text>
-      )}
+      ))}
     </g>
   );
 }
 
 function shapeChartData(summary: BilanSummary | null): {
   data: ChartRow[];
-  series: BarSeries[];
+  series: SlotSeries[];
+  metaByMonthSlot: Map<string, SlotMeta>;
   diffByMonth: Map<string, number>;
+  monthTotals: Map<string, { debitEuros: number; creditEuros: number }>;
 } {
-  if (!summary) return { data: [], series: [], diffByMonth: new Map() };
-  const rows: ChartRow[] = summary.months.map((m) => ({ month: m }));
-  const byMonth = new Map(rows.map((r) => [r.month, r]));
+  if (!summary) {
+    return {
+      data: [],
+      series: [],
+      metaByMonthSlot: new Map(),
+      diffByMonth: new Map(),
+      monthTotals: new Map(),
+    };
+  }
 
-  const debitSeen = new Map<string, BarSeries>();
-  const creditSeen = new Map<string, BarSeries>();
-  // For the per-month diff line under each tick.
-  const debitTotalByMonth = new Map<string, number>();
-  const creditTotalByMonth = new Map<string, number>();
+  type Entry = { name: string; valueEuros: number; isPlanned: boolean };
+  const perMonth = new Map<string, { debit: Entry[]; credit: Entry[] }>();
+  for (const m of summary.months) perMonth.set(m, { debit: [], credit: [] });
 
   for (const row of summary.rows) {
-    // Planned ops collapse into a single 'planned' series per side; real
-    // categories key off (type, category_id) as before.
-    const idKey = row.is_planned ? "planned" : (row.category_id ?? "none");
-    const key = `${row.type}_${idKey}`;
-    const map = row.type === "debit" ? debitSeen : creditSeen;
-    let series = map.get(key);
-    if (!series) {
-      series = {
-        key,
-        categoryName: row.category_name ?? fr.common.noCategory,
-        type: row.type,
-        totalCents: 0,
-        isPlanned: row.is_planned,
-      };
-      map.set(key, series);
-    }
-    const abs = Math.abs(row.total_cents);
-    series.totalCents += abs;
-    const target = byMonth.get(row.month);
-    if (target) target[key] = abs / 100;
-    if (row.type === "debit") {
-      debitTotalByMonth.set(row.month, (debitTotalByMonth.get(row.month) ?? 0) + abs);
-    } else {
-      creditTotalByMonth.set(row.month, (creditTotalByMonth.get(row.month) ?? 0) + abs);
-    }
+    const bucket = perMonth.get(row.month);
+    if (!bucket) continue;
+    const list = row.type === "debit" ? bucket.debit : bucket.credit;
+    list.push({
+      name: row.category_name ?? fr.common.noCategory,
+      valueEuros: Math.abs(row.total_cents) / 100,
+      isPlanned: row.is_planned,
+    });
   }
 
-  // Sort each side by total magnitude DESC. With recharts, the first <Bar>
-  // declared lands at the bottom of the stack — so the biggest categories
-  // anchor the bottom (and get the darkest shade via stackShade()).
-  const sortByMagnitude = (m: Map<string, BarSeries>) =>
-    [...m.values()].sort((a, b) => b.totalCents - a.totalCents);
+  let maxSlots = 0;
+  for (const { debit, credit } of perMonth.values()) {
+    maxSlots = Math.max(maxSlots, debit.length, credit.length);
+  }
 
+  const data: ChartRow[] = [];
+  const metaByMonthSlot = new Map<string, SlotMeta>();
   const diffByMonth = new Map<string, number>();
-  for (const m of summary.months) {
-    const d = debitTotalByMonth.get(m) ?? 0;
-    const c = creditTotalByMonth.get(m) ?? 0;
-    diffByMonth.set(m, (c - d) / 100);
+  const monthTotals = new Map<string, { debitEuros: number; creditEuros: number }>();
+
+  for (const month of summary.months) {
+    const bucket = perMonth.get(month);
+    const row: ChartRow = { month };
+    let debitTotal = 0;
+    let creditTotal = 0;
+
+    if (bucket) {
+      for (const side of ["debit", "credit"] as const) {
+        // Sort each month's stack DESC so slot 0 (= bottom) holds the
+        // biggest share for THAT month — order changes month over month.
+        const entries = [...bucket[side]].sort((a, b) => b.valueEuros - a.valueEuros);
+        const total = entries.length;
+        entries.forEach((entry, slot) => {
+          const dataKey = `s${slot}_${side}`;
+          (row as Record<string, number | string>)[dataKey] = entry.valueEuros;
+          metaByMonthSlot.set(`${month}|${side}|${slot}`, {
+            categoryName: entry.name,
+            valueEuros: entry.valueEuros,
+            isPlanned: entry.isPlanned,
+            fill: entry.isPlanned ? "transparent" : stackShade(side, slot, total),
+          });
+          if (side === "debit") debitTotal += entry.valueEuros;
+          else creditTotal += entry.valueEuros;
+        });
+      }
+    }
+
+    data.push(row);
+    diffByMonth.set(month, creditTotal - debitTotal);
+    monthTotals.set(month, { debitEuros: debitTotal, creditEuros: creditTotal });
   }
 
-  return {
-    data: rows,
-    // Credits first → rendered on the LEFT side of each month group.
-    series: [...sortByMagnitude(creditSeen), ...sortByMagnitude(debitSeen)],
-    diffByMonth,
-  };
+  const series: SlotSeries[] = [];
+  // CREDIT bars declared first → rendered on the LEFT of each month group.
+  for (let s = 0; s < maxSlots; s++) {
+    series.push({ dataKey: `s${s}_credit`, type: "credit", slot: s });
+  }
+  for (let s = 0; s < maxSlots; s++) {
+    series.push({ dataKey: `s${s}_debit`, type: "debit", slot: s });
+  }
+
+  return { data, series, metaByMonthSlot, diffByMonth, monthTotals };
 }
 
-// Programmatic shade: rank 0 (largest magnitude → bottom of stack) is darkest;
-// the lightest shade is reserved for the smallest. Returns an oklch CSS color.
-function stackShade(type: "debit" | "credit", rank: number, total: number): string {
+// Per-month slot shade. Slot 0 (bottom = largest share) is the LIGHTEST;
+// the smallest slice on top is the DARKEST. Returns an oklch CSS color.
+function stackShade(type: "debit" | "credit", slot: number, total: number): string {
   const hue = type === "debit" ? 25 : 150;
   const chroma = type === "debit" ? 0.2 : 0.16;
-  const lightnessLow = 0.42; // darkest
-  const lightnessHigh = 0.78; // lightest
-  const t = total > 1 ? rank / (total - 1) : 0;
-  const L = lightnessLow + (lightnessHigh - lightnessLow) * t;
+  const lightnessLow = 0.45; // darkest
+  const lightnessHigh = 0.82; // lightest
+  const t = total > 1 ? slot / (total - 1) : 0;
+  // Slot 0 → high lightness; slot total-1 → low lightness.
+  const L = lightnessHigh - (lightnessHigh - lightnessLow) * t;
   return `oklch(${L.toFixed(3)} ${chroma} ${hue})`;
 }
 
