@@ -202,16 +202,22 @@ export function BilanPage() {
 
 function KpiPanel({ summary }: { summary: BilanSummary | null }) {
   const kpis = useMemo(() => computeKpis(summary), [summary]);
+  const rows: { label: string; value: number; signed?: boolean; colored?: "credit" | "debit" }[] =
+    [
+      { label: fr.bilan.kpiSolde, value: kpis.soldeCents, signed: true },
+      { label: fr.bilan.kpiAvgCredits, value: kpis.avgCreditCents, colored: "credit" },
+      { label: fr.bilan.kpiAvgDebits, value: kpis.avgDebitCents, colored: "debit" },
+      { label: fr.bilan.kpiTotalCredits, value: kpis.totalCreditCents, colored: "credit" },
+      { label: fr.bilan.kpiTotalDebits, value: kpis.totalDebitCents, colored: "debit" },
+    ];
   return (
-    <div className="border border-border rounded-md p-4 space-y-3">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        KPIs
-      </h2>
-      <KpiRow label={fr.bilan.kpiSolde} value={kpis.soldeCents} signed />
-      <KpiRow label={fr.bilan.kpiAvgCredits} value={kpis.avgCreditCents} colored="credit" />
-      <KpiRow label={fr.bilan.kpiAvgDebits} value={kpis.avgDebitCents} colored="debit" />
-      <KpiRow label={fr.bilan.kpiTotalCredits} value={kpis.totalCreditCents} colored="credit" />
-      <KpiRow label={fr.bilan.kpiTotalDebits} value={kpis.totalDebitCents} colored="debit" />
+    <div className="border border-border rounded-md p-4">
+      <h2 className="text-sm font-bold text-foreground mb-3">KPIs</h2>
+      <ul>
+        {rows.map((r, i) => (
+          <KpiRow key={r.label} {...r} zebra={i % 2 === 1} />
+        ))}
+      </ul>
     </div>
   );
 }
@@ -221,11 +227,13 @@ function KpiRow({
   value,
   signed,
   colored,
+  zebra,
 }: {
   label: string;
   value: number;
   signed?: boolean;
   colored?: "credit" | "debit";
+  zebra?: boolean;
 }) {
   const cls = signed
     ? value >= 0
@@ -237,12 +245,16 @@ function KpiRow({
         ? "text-debit"
         : "";
   return (
-    <div className="flex items-baseline justify-between text-sm">
+    <li
+      className={`flex items-baseline justify-between text-sm px-2 py-1.5 rounded-sm ${
+        zebra ? "bg-muted" : ""
+      }`}
+    >
       <span className="text-muted-foreground">{label}</span>
       <span className={`font-semibold tabular-nums ${cls}`}>
         {(signed && value > 0 ? "+" : "") + formatEurosFromCents(value)}
       </span>
-    </div>
+    </li>
   );
 }
 
@@ -258,7 +270,7 @@ function PlannedPanel({
   return (
     <div className="border border-border rounded-md p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-sm font-bold text-foreground">
           {fr.bilan.plannedTitle}
         </h2>
         <Button size="sm" variant="outline" onClick={onAdd}>
