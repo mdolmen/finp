@@ -136,6 +136,10 @@ def _apply_now(conn: sqlite3.Connection, _: EmptyParams) -> ApplyResult:
     return ApplyResult(assigned=rules_engine.apply_rules_bulk(conn))
 
 
+def _run(conn: sqlite3.Connection, params: IdParams) -> ApplyResult:
+    return ApplyResult(assigned=rules_engine.apply_rule_to_uncategorized(conn, params.id))
+
+
 METHODS: dict[str, Command] = {
     "rules.list": Command(ListParams, _list),
     "rules.get": Command(IdParams, _get),
@@ -144,4 +148,5 @@ METHODS: dict[str, Command] = {
     "rules.delete": Command(IdParams, _delete),
     "rules.reorder_in_category": Command(ReorderParams, _reorder),
     "rules.apply_now": Command(EmptyParams, _apply_now),
+    "rules.run": Command(IdParams, _run),
 }

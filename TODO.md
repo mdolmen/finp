@@ -90,11 +90,11 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M7 — Page "Règles"
 
-- [ ] Grouped by target category (alphabetical), within group ordered by priority.
-- [ ] Drag-to-reorder within a category (persists `priority`).
-- [ ] [Ajouter une règle] modal: target category, predicate builder (kind: libellé contains | montant compare; with operator + value), enabled toggle.
-- [ ] Edit / delete per rule.
-- [ ] [Appliquer maintenant] button (re-runs against currently uncategorized ops).
+- [x] Grouped by target category (alphabetical), within group ordered by priority.
+- [x] Drag-to-reorder within a category (persists `priority`).
+- [x] [Ajouter une règle] modal: target category, predicate builder (kind: libellé contains | montant compare; with operator + value), enabled toggle.
+- [x] Edit / delete per rule.
+- [x] [Appliquer maintenant] button (re-runs against currently uncategorized ops).
 
 ## M8 — Page "Bilan"
 
@@ -124,6 +124,7 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [ ] Number/date formatting via `Intl` (fr-FR locale).
 - [ ] Error boundary at app root.
 - [ ] App icon, window title.
+- [ ] Add english language
 
 ## M10 — Packaging
 

@@ -30,4 +30,5 @@ export const rulesApi = {
       rule_ids: ruleIds,
     }),
   applyNow: () => rpc<{ assigned: number }>("rules.apply_now"),
+  run: (id: number) => rpc<{ assigned: number }>("rules.run", { id }),
 };

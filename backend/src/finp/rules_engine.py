@@ -37,6 +37,29 @@ def apply_rules(conn: sqlite3.Connection, op: Operation) -> Operation:
     return op
 
 
+def apply_rule_to_uncategorized(conn: sqlite3.Connection, rule_id: int) -> int:
+    """Apply a single rule (by id) to every operation that has no category yet.
+
+    Returns the count of operations that matched and were categorized.
+    Disabled rules return 0 without scanning.
+    """
+    rule = rules.get(conn, rule_id)
+    if not rule.enabled:
+        return 0
+
+    uncategorized = operations.list_(conn, include_no_category=True)
+    assigned = 0
+    for op in uncategorized:
+        if rule.predicate.matches(op):
+            operations.assign_category(conn, op.id, rule.category_id)
+            events.bus.publish(
+                events.RULE_MATCHED,
+                {"rule_id": rule.id, "operation_id": op.id, "category_id": rule.category_id},
+            )
+            assigned += 1
+    return assigned
+
+
 def apply_rules_bulk(conn: sqlite3.Connection) -> int:
     """Apply rules to every uncategorized operation. Returns the number assigned.
 

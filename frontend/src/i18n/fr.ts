@@ -74,6 +74,8 @@ export const fr = {
     empty: "Aucune règle. Ajoutez-en une pour classer automatiquement vos opérations.",
     applyNow: "Appliquer maintenant",
     appliedNow: "{n} opération(s) classée(s) automatiquement.",
+    runRule: "Exécuter cette règle",
+    ranRule: "« {name} » : {n} opération(s) classée(s).",
     addTitle: "Nouvelle règle",
     editTitle: "Modifier la règle",
     fieldName: "Nom",

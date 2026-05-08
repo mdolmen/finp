@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { GripVertical, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Play, Plus, Sparkles, Trash2 } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -84,6 +84,19 @@ export function ReglesPage() {
     }
   }
 
+  async function handleRun(rule: Rule) {
+    setError(null);
+    setInfo(null);
+    try {
+      const r = await rulesApi.run(rule.id);
+      setInfo(
+        fr.regles.ranRule.replace("{name}", rule.name).replace("{n}", String(r.assigned)),
+      );
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }
+
   async function handleToggleEnabled(rule: Rule, enabled: boolean) {
     try {
       await rulesApi.update({ id: rule.id, enabled });
@@ -152,6 +165,7 @@ export function ReglesPage() {
               onToggleEnabled={handleToggleEnabled}
               onEdit={setEditing}
               onDelete={setDeleting}
+              onRun={handleRun}
               onReorder={handleReorder}
             />
           ))}
@@ -194,6 +208,7 @@ function SortableGroup({
   onToggleEnabled,
   onEdit,
   onDelete,
+  onRun,
   onReorder,
 }: {
   category: Category;
@@ -201,6 +216,7 @@ function SortableGroup({
   onToggleEnabled: (rule: Rule, enabled: boolean) => void;
   onEdit: (rule: Rule) => void;
   onDelete: (rule: Rule) => void;
+  onRun: (rule: Rule) => void;
   onReorder: (categoryId: number, orderedIds: number[]) => void;
 }) {
   // 8px activation distance: clicks on the row's buttons (edit/delete/checkbox)
@@ -233,6 +249,7 @@ function SortableGroup({
                 onToggle={(en) => onToggleEnabled(r, en)}
                 onEdit={() => onEdit(r)}
                 onDelete={() => onDelete(r)}
+                onRun={() => onRun(r)}
               />
             ))}
           </ul>
@@ -247,11 +264,13 @@ function SortableRuleRow({
   onToggle,
   onEdit,
   onDelete,
+  onRun,
 }: {
   rule: Rule;
   onToggle: (enabled: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onRun: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rule.id,
@@ -288,6 +307,17 @@ function SortableRuleRow({
           {describePredicate(rule.predicate)}
         </div>
       </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={onRun}
+        disabled={!rule.enabled}
+        className="text-muted-foreground hover:text-foreground"
+        aria-label={fr.regles.runRule}
+        title={fr.regles.runRule}
+      >
+        <Play className="size-3.5" />
+      </Button>
       <Button
         size="sm"
         variant="ghost"
