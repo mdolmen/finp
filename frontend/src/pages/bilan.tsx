@@ -475,7 +475,10 @@ function BilanChart({
   summary: BilanSummary | null;
   yMaxEuros: number | null;
 }) {
-  const [hoveredStack, setHoveredStack] = useState<"debit" | "credit" | null>(null);
+  const [hovered, setHovered] = useState<{ month: string; type: "debit" | "credit" } | null>(
+    null,
+  );
+  const hoveredStack = hovered?.type ?? null;
   const shaped = useMemo(() => shapeChartData(summary), [summary]);
 
   if (summary === null) {
@@ -576,41 +579,43 @@ function BilanChart({
             {/* One Bar per (slot, side). Credits first → LEFT of each
                 month group; within a side, slot 0 sits at the bottom and
                 holds that month's largest share. */}
-            {shaped.series.map((s) => {
-              const dimmed = hoveredStack !== null && hoveredStack !== s.type;
-              return (
-                <Bar
-                  key={s.dataKey}
-                  dataKey={s.dataKey}
-                  stackId={s.type}
-                  fillOpacity={dimmed ? 0.3 : 1}
-                  onMouseEnter={() => setHoveredStack(s.type)}
-                  onMouseLeave={() => setHoveredStack(null)}
-                  isAnimationActive={false}
-                >
-                  {shaped.data.map((row, i) => {
-                    const meta = shaped.metaByMonthSlot.get(
-                      `${row.month}|${s.type}|${s.slot}`,
-                    );
-                    if (!meta) {
-                      return <Cell key={i} fill="transparent" />;
-                    }
-                    const accent =
-                      s.type === "debit" ? "var(--debit)" : "var(--credit)";
-                    return (
-                      <Cell
-                        key={i}
-                        fill={meta.fill}
-                        stroke={meta.isPlanned ? accent : undefined}
-                        strokeOpacity={meta.isPlanned ? 0.7 : 0}
-                        strokeWidth={meta.isPlanned ? 1.5 : 0}
-                        strokeDasharray={meta.isPlanned ? "4 3" : undefined}
-                      />
-                    );
-                  })}
-                </Bar>
-              );
-            })}
+            {shaped.series.map((s) => (
+              <Bar
+                key={s.dataKey}
+                dataKey={s.dataKey}
+                stackId={s.type}
+                isAnimationActive={false}
+              >
+                {shaped.data.map((row, i) => {
+                  const meta = shaped.metaByMonthSlot.get(
+                    `${row.month}|${s.type}|${s.slot}`,
+                  );
+                  if (!meta) {
+                    return <Cell key={i} fill="transparent" />;
+                  }
+                  const accent = s.type === "debit" ? "var(--debit)" : "var(--credit)";
+                  // Dim every Cell that isn't part of the hovered month+side.
+                  const dimmed =
+                    hovered !== null &&
+                    !(hovered.month === row.month && hovered.type === s.type);
+                  return (
+                    <Cell
+                      key={i}
+                      fill={meta.fill}
+                      fillOpacity={dimmed ? 0.3 : 1}
+                      stroke={meta.isPlanned ? accent : undefined}
+                      strokeOpacity={meta.isPlanned ? 0.7 : 0}
+                      strokeWidth={meta.isPlanned ? 1.5 : 0}
+                      strokeDasharray={meta.isPlanned ? "4 3" : undefined}
+                      onMouseEnter={() =>
+                        setHovered({ month: row.month, type: s.type })
+                      }
+                      onMouseLeave={() => setHovered(null)}
+                    />
+                  );
+                })}
+              </Bar>
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>

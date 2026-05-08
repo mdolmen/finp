@@ -112,7 +112,7 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
     - Expense: as many shades of red as categories, the darker (greater abs(montant)) at the bottom
 - [ ] The tooltip on hover shows is on a single bar, not on a tuple, the style of the hover bar changes with a visual cue indicating the focus.
 - [x] The tooltp content shows categories in ascending order of montant.
-- [ ] Diff of a tuple of stacked bar at the bottom it (green font color if positive, red otherwise)
+- [x] Diff of a tuple of stacked bar at the bottom it (green font color if positive, red otherwise)
 - [x] The y-scale of the histogram does not change when changing the filters
 - [x] All boxes ticked by default in the filter
 - [x] Two-columns layout below the histogram
