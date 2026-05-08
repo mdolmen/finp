@@ -598,15 +598,15 @@ function BilanChart({
                     hovered !== null &&
                     hovered.month === row.month &&
                     hovered.type === s.type;
-                  // Hovered cells get a white outline. Non-hovered planned
+                  // Hovered cells get a dark outline. Non-hovered planned
                   // cells keep their dashed accent stroke.
                   const stroke = isHovered
-                    ? "#fff"
+                    ? "var(--foreground)"
                     : meta.isPlanned
                       ? accent
                       : undefined;
                   const strokeWidth = isHovered ? 1.5 : meta.isPlanned ? 1.5 : 0;
-                  const strokeOpacity = isHovered ? 1 : meta.isPlanned ? 0.7 : 0;
+                  const strokeOpacity = isHovered ? 0.85 : meta.isPlanned ? 0.7 : 0;
                   const strokeDasharray = isHovered
                     ? undefined
                     : meta.isPlanned
