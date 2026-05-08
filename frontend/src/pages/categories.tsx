@@ -56,7 +56,7 @@ export function CategoriesPage() {
   }
 
   return (
-    <div className="px-6 py-5 max-w-2xl">
+    <div className="px-6 py-5 max-w-3xl">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-semibold tracking-tight">{fr.categories.title}</h1>
         <Button size="sm" onClick={() => setAddOpen(true)}>
