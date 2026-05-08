@@ -5,7 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Customized,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -492,7 +491,7 @@ function BilanChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={shaped.data}
-            margin={{ top: 18, right: 12, left: 0, bottom: 4 }}
+            margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
             barGap={0}
             barCategoryGap="14%"
           >
@@ -502,9 +501,8 @@ function BilanChart({
               interval={0}
               tickLine={false}
               axisLine={{ stroke: "var(--border)" }}
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              tickFormatter={formatMonth}
-              height={20}
+              tick={<MonthDiffTick diffByMonth={shaped.diffByMonth} />}
+              height={40}
             />
             <YAxis
               tickFormatter={(v) => formatEuros(v as number, { compact: true })}
@@ -613,15 +611,6 @@ function BilanChart({
                 </Bar>
               );
             })}
-            <Customized
-              component={(props: unknown) => (
-                <DiffOverlay
-                  {...(props as DiffOverlayChartProps)}
-                  diffByMonth={shaped.diffByMonth}
-                  monthTotals={shaped.monthTotals}
-                />
-              )}
-            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -629,61 +618,39 @@ function BilanChart({
   );
 }
 
-type DiffOverlayChartProps = {
-  yAxisMap?: Record<string, { scale: (v: number) => number }>;
-  formattedGraphicalItems?: {
-    props: { data: { x: number; width: number; payload: { month: string } }[] };
-  }[];
-};
-
-function DiffOverlay({
-  yAxisMap,
-  formattedGraphicalItems,
+function MonthDiffTick({
   diffByMonth,
-  monthTotals,
-}: DiffOverlayChartProps & {
+  ...props
+}: {
   diffByMonth: Map<string, number>;
-  monthTotals: Map<string, { debitEuros: number; creditEuros: number }>;
+  // recharts injects these; we don't model the full type.
+  x?: number;
+  y?: number;
+  payload?: { value: string };
 }) {
-  if (!yAxisMap || !formattedGraphicalItems?.length) return null;
-  const yAxis = Object.values(yAxisMap)[0];
-  if (!yAxis) return null;
-  const yScale = yAxis.scale;
-
-  // The first bar group holds one entry per month with its pixel x and
-  // bar width. Anchor the diff label at the right edge of the credit bar
-  // (which equals the left edge of the debit bar) so it sits centred over
-  // the month group.
-  const firstBar = formattedGraphicalItems[0];
-  if (!firstBar) return null;
-
-  const labels: { x: number; y: number; diff: number }[] = [];
-  for (const point of firstBar.props.data) {
-    const month = point.payload.month;
-    const totals = monthTotals.get(month);
-    const diff = diffByMonth.get(month);
-    if (!totals || diff === undefined) continue;
-    const tallest = Math.max(totals.debitEuros, totals.creditEuros);
-    if (tallest <= 0) continue;
-    const x = point.x + point.width;
-    const y = yScale(tallest) - 4;
-    labels.push({ x, y, diff });
-  }
-
+  const { x = 0, y = 0, payload } = props;
+  const month = payload?.value ?? "";
+  const diff = diffByMonth.get(month);
   return (
-    <g>
-      {labels.map((l, i) => (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        textAnchor="middle"
+        dy={12}
+        fill="var(--muted-foreground)"
+        style={{ fontSize: 11 }}
+      >
+        {formatMonth(month)}
+      </text>
+      {diff !== undefined && (
         <text
-          key={i}
-          x={l.x}
-          y={l.y}
           textAnchor="middle"
-          fill={l.diff >= 0 ? "var(--credit)" : "var(--debit)"}
-          style={{ fontSize: 10, fontWeight: 600 }}
+          dy={26}
+          fill={diff >= 0 ? "var(--credit)" : "var(--debit)"}
+          style={{ fontSize: 10, fontWeight: 500 }}
         >
-          {(l.diff >= 0 ? "+" : "") + formatEuros(l.diff, { compact: true })}
+          {(diff >= 0 ? "+" : "") + formatEuros(diff, { compact: true })}
         </text>
-      ))}
+      )}
     </g>
   );
 }
