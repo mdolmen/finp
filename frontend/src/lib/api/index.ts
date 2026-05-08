@@ -12,4 +12,6 @@ export type {
   BilanSummaryInput,
   MonthSlice,
 } from "./bilan";
+export { plannedApi } from "./planned";
+export type { PlannedOperation } from "./planned";
 export type * from "./types";

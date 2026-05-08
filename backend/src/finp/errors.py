@@ -11,7 +11,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any
 
-from finp import accounts, categories, rules
+from finp import accounts, categories, planned_operations, rules
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +40,8 @@ def to_app_error(exc: Exception) -> AppError | None:
         return AppError("category.builtin", str(exc))
     if isinstance(exc, rules.RuleNotFoundError):
         return AppError("rule.not_found", str(exc))
+    if isinstance(exc, planned_operations.PlannedOperationNotFoundError):
+        return AppError("planned.not_found", str(exc))
     if isinstance(exc, sqlite3.IntegrityError):
         return AppError("conflict", str(exc))
     if isinstance(exc, ValueError):

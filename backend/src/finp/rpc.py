@@ -28,6 +28,7 @@ from finp.commands import bilan as bilan_cmds
 from finp.commands import categories as category_cmds
 from finp.commands import imports as import_cmds
 from finp.commands import operations as operation_cmds
+from finp.commands import planned_operations as planned_cmds
 from finp.commands import rules as rule_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
@@ -45,6 +46,7 @@ METHODS: dict[str, Command] = {
     **rule_cmds.METHODS,
     **import_cmds.METHODS,
     **bilan_cmds.METHODS,
+    **planned_cmds.METHODS,
 }
 
 

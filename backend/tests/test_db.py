@@ -5,7 +5,7 @@ def test_migrate_creates_schema_and_seeds_builtin():
     conn = connect(":memory:")
     applied = migrate(conn)
 
-    assert applied == ["0001_initial.sql"]
+    assert applied == ["0001_initial.sql", "0002_planned_operations.sql"]
 
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"accounts", "categories", "operations", "rules", "schema_migrations"} <= tables

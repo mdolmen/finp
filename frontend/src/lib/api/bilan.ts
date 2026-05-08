@@ -7,6 +7,7 @@ export type MonthSlice = {
   category_id: number | null;
   category_name: string | null;
   total_cents: number;
+  is_planned: boolean;
 };
 
 export type BilanSummary = {

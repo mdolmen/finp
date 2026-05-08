@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -8,9 +9,26 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { bilanApi, RpcError } from "@/lib/api";
-import type { BilanFilterOptions, BilanSummary } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MultiSelect } from "@/components/MultiSelect";
+import { bilanApi, plannedApi, RpcError } from "@/lib/api";
+import type {
+  BilanFilterOptions,
+  BilanSummary,
+  PlannedOperation,
+} from "@/lib/api";
+import { formatDate } from "@/lib/format";
 import { fr } from "@/i18n/fr";
 
 const NO_CATEGORY_SENTINEL = -1 as const;
@@ -24,7 +42,18 @@ export function BilanPage() {
   // The y-axis upper bound is locked to the max stack height in the unfiltered
   // data so applying filters never rescales the chart (just empties it).
   const [yMaxEuros, setYMaxEuros] = useState<number | null>(null);
+  const [planned, setPlanned] = useState<PlannedOperation[]>([]);
+  const [addPlannedOpen, setAddPlannedOpen] = useState(false);
+  const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshPlanned = useCallback(async () => {
+    try {
+      setPlanned(await plannedApi.list());
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }, []);
 
   // Load filter options + the unfiltered summary (for the y-scale lock).
   useEffect(() => {
@@ -36,7 +65,30 @@ export function BilanPage() {
       .summary({})
       .then((s) => setYMaxEuros(computeYMaxEuros(s)))
       .catch((e) => setError(formatError(e)));
-  }, []);
+    refreshPlanned();
+  }, [refreshPlanned]);
+
+  async function handleDeletePlanned() {
+    if (!deletingPlanned) return;
+    try {
+      await plannedApi.delete(deletingPlanned.id);
+      await refreshPlanned();
+      // Force the next summary fetch by bumping a filter dep — simpler: just
+      // refetch the current filtered summary inline.
+      const includeNoCatDebit = debitIds.includes(NO_CATEGORY_SENTINEL);
+      const includeNoCatCredit = creditIds.includes(NO_CATEGORY_SENTINEL);
+      const s = await bilanApi.summary({
+        account_ids: accountIds.length ? accountIds : null,
+        debit_category_ids: realIds(debitIds),
+        credit_category_ids: realIds(creditIds),
+        include_no_category_debit: includeNoCatDebit,
+        include_no_category_credit: includeNoCatCredit,
+      });
+      setSummary(s);
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }
 
   // Once options arrive, default every filter to "all selected" so the
   // checkboxes show ticked. Empty selection means "show all" semantically,
@@ -101,8 +153,292 @@ export function BilanPage() {
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       <BilanChart summary={summary} yMaxEuros={yMaxEuros} />
+
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        <KpiPanel summary={summary} />
+        <PlannedPanel
+          planned={planned}
+          onAdd={() => setAddPlannedOpen(true)}
+          onDelete={(p) => setDeletingPlanned(p)}
+        />
+      </div>
+
+      {addPlannedOpen && (
+        <AddPlannedDialog
+          onClose={() => setAddPlannedOpen(false)}
+          onCreated={async () => {
+            setAddPlannedOpen(false);
+            await refreshPlanned();
+            // Surface the new op in the chart by refetching the summary.
+            const includeNoCatDebit = debitIds.includes(NO_CATEGORY_SENTINEL);
+            const includeNoCatCredit = creditIds.includes(NO_CATEGORY_SENTINEL);
+            const s = await bilanApi.summary({
+              account_ids: accountIds.length ? accountIds : null,
+              debit_category_ids: realIds(debitIds),
+              credit_category_ids: realIds(creditIds),
+              include_no_category_debit: includeNoCatDebit,
+              include_no_category_credit: includeNoCatCredit,
+            });
+            setSummary(s);
+          }}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deletingPlanned !== null}
+        onOpenChange={(v) => !v && setDeletingPlanned(null)}
+        title={
+          deletingPlanned
+            ? fr.bilan.plannedConfirmDelete.replace("{name}", deletingPlanned.libelle)
+            : ""
+        }
+        confirmLabel={fr.common.delete}
+        destructive
+        onConfirm={handleDeletePlanned}
+      />
     </div>
   );
+}
+
+function KpiPanel({ summary }: { summary: BilanSummary | null }) {
+  const kpis = useMemo(() => computeKpis(summary), [summary]);
+  return (
+    <div className="border border-border rounded-md p-4 space-y-3">
+      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        KPIs
+      </h2>
+      <KpiRow label={fr.bilan.kpiSolde} value={kpis.soldeCents} signed />
+      <KpiRow label={fr.bilan.kpiAvgCredits} value={kpis.avgCreditCents} colored="credit" />
+      <KpiRow label={fr.bilan.kpiAvgDebits} value={kpis.avgDebitCents} colored="debit" />
+      <KpiRow label={fr.bilan.kpiTotalCredits} value={kpis.totalCreditCents} colored="credit" />
+      <KpiRow label={fr.bilan.kpiTotalDebits} value={kpis.totalDebitCents} colored="debit" />
+    </div>
+  );
+}
+
+function KpiRow({
+  label,
+  value,
+  signed,
+  colored,
+}: {
+  label: string;
+  value: number;
+  signed?: boolean;
+  colored?: "credit" | "debit";
+}) {
+  const cls = signed
+    ? value >= 0
+      ? "text-credit"
+      : "text-debit"
+    : colored === "credit"
+      ? "text-credit"
+      : colored === "debit"
+        ? "text-debit"
+        : "";
+  return (
+    <div className="flex items-baseline justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-semibold tabular-nums ${cls}`}>
+        {(signed && value > 0 ? "+" : "") + formatEurosFromCents(value)}
+      </span>
+    </div>
+  );
+}
+
+function PlannedPanel({
+  planned,
+  onAdd,
+  onDelete,
+}: {
+  planned: PlannedOperation[];
+  onAdd: () => void;
+  onDelete: (p: PlannedOperation) => void;
+}) {
+  return (
+    <div className="border border-border rounded-md p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {fr.bilan.plannedTitle}
+        </h2>
+        <Button size="sm" variant="outline" onClick={onAdd}>
+          <Plus className="size-3.5" />
+          {fr.common.add}
+        </Button>
+      </div>
+      {planned.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{fr.bilan.plannedEmpty}</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {planned.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 py-1.5 text-sm">
+              <span className="text-muted-foreground tabular-nums w-20 shrink-0">
+                {formatDate(p.date)}
+              </span>
+              <span
+                className={`tabular-nums w-24 text-right shrink-0 ${
+                  p.montant_cents < 0 ? "text-debit" : "text-credit"
+                }`}
+              >
+                {formatEurosFromCents(p.montant_cents)}
+              </span>
+              <span className="flex-1 truncate" title={p.libelle}>
+                {p.libelle}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onDelete(p)}
+                className="text-muted-foreground hover:text-destructive"
+                aria-label={fr.common.delete}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function AddPlannedDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [montantText, setMontantText] = useState("");
+  const [libelle, setLibelle] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cents = parseEurosToCents(montantText);
+  const valid = !!date && cents !== null && libelle.trim();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!valid || cents === null || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await plannedApi.create({
+        date,
+        montant_cents: cents,
+        libelle: libelle.trim(),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof RpcError ? e.message : String(e));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{fr.bilan.plannedAddTitle}</DialogTitle>
+          <DialogDescription>{fr.bilan.plannedAddDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{fr.bilan.plannedFieldDate}</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{fr.bilan.plannedFieldMontant}</Label>
+              <Input
+                value={montantText}
+                onChange={(e) => setMontantText(e.target.value)}
+                inputMode="decimal"
+                placeholder="-100,00"
+                className="tabular-nums"
+                disabled={submitting}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{fr.bilan.plannedFieldLibelle}</Label>
+            <Input
+              value={libelle}
+              onChange={(e) => setLibelle(e.target.value)}
+              placeholder="Ex. Impôts T2"
+              disabled={submitting}
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
+              {fr.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!valid || submitting}>
+              {fr.common.add}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function computeKpis(summary: BilanSummary | null): {
+  soldeCents: number;
+  totalCreditCents: number;
+  totalDebitCents: number;
+  avgCreditCents: number;
+  avgDebitCents: number;
+} {
+  if (!summary) {
+    return {
+      soldeCents: 0,
+      totalCreditCents: 0,
+      totalDebitCents: 0,
+      avgCreditCents: 0,
+      avgDebitCents: 0,
+    };
+  }
+  let totalCreditCents = 0;
+  let totalDebitCents = 0;
+  for (const r of summary.rows) {
+    if (r.is_planned) continue; // KPIs reflect realized data only.
+    if (r.type === "credit") totalCreditCents += r.total_cents;
+    else totalDebitCents += Math.abs(r.total_cents);
+  }
+  const months = Math.max(1, summary.months.length);
+  return {
+    soldeCents: totalCreditCents - totalDebitCents,
+    totalCreditCents,
+    totalDebitCents,
+    avgCreditCents: Math.round(totalCreditCents / months),
+    avgDebitCents: Math.round(totalDebitCents / months),
+  };
+}
+
+const EUR_FMT_CENTS = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "EUR",
+});
+
+function formatEurosFromCents(cents: number): string {
+  return EUR_FMT_CENTS.format(cents / 100);
+}
+
+function parseEurosToCents(input: string): number | null {
+  const cleaned = input.replace(/[\s   ]/g, "").replace(",", ".");
+  if (!cleaned || cleaned === "-") return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
 }
 
 function categoryOptions(
@@ -126,6 +462,7 @@ type BarSeries = {
   categoryName: string;
   type: "debit" | "credit";
   totalCents: number; // total over the whole window — used for sort + shade rank
+  isPlanned: boolean;
 };
 
 function BilanChart({
@@ -240,8 +577,10 @@ function BilanChart({
                     .filter((x) => x.type === "credit")
                     .findIndex((x) => x.key === s.key);
               const total = s.type === "debit" ? debitCount : creditCount;
-              const fill = stackShade(s.type, rank, total);
+              const fill = s.isPlanned ? "transparent" : stackShade(s.type, rank, total);
               const dimmed = hoveredStack !== null && hoveredStack !== s.type;
+              const accentStroke =
+                s.type === "debit" ? "var(--debit)" : "var(--credit)";
               return (
                 <Bar
                   key={s.key}
@@ -249,9 +588,10 @@ function BilanChart({
                   stackId={s.type}
                   fill={fill}
                   fillOpacity={dimmed ? 0.3 : 1}
-                  stroke={hoveredStack === s.type ? "var(--foreground)" : undefined}
-                  strokeOpacity={hoveredStack === s.type ? 0.25 : 0}
-                  strokeWidth={hoveredStack === s.type ? 1 : 0}
+                  stroke={s.isPlanned ? accentStroke : hoveredStack === s.type ? "var(--foreground)" : undefined}
+                  strokeOpacity={s.isPlanned ? 0.7 : hoveredStack === s.type ? 0.25 : 0}
+                  strokeWidth={s.isPlanned ? 1.5 : hoveredStack === s.type ? 1 : 0}
+                  strokeDasharray={s.isPlanned ? "4 3" : undefined}
                   onMouseEnter={() => setHoveredStack(s.type)}
                   onMouseLeave={() => setHoveredStack(null)}
                   isAnimationActive={false}
@@ -318,21 +658,24 @@ function shapeChartData(summary: BilanSummary | null): {
   const creditTotalByMonth = new Map<string, number>();
 
   for (const row of summary.rows) {
-    const idKey = row.category_id ?? "none";
+    // Planned ops collapse into a single 'planned' series per side; real
+    // categories key off (type, category_id) as before.
+    const idKey = row.is_planned ? "planned" : (row.category_id ?? "none");
     const key = `${row.type}_${idKey}`;
     const map = row.type === "debit" ? debitSeen : creditSeen;
-    let s = map.get(key);
-    if (!s) {
-      s = {
+    let series = map.get(key);
+    if (!series) {
+      series = {
         key,
         categoryName: row.category_name ?? fr.common.noCategory,
         type: row.type,
         totalCents: 0,
+        isPlanned: row.is_planned,
       };
-      map.set(key, s);
+      map.set(key, series);
     }
     const abs = Math.abs(row.total_cents);
-    s.totalCents += abs;
+    series.totalCents += abs;
     const target = byMonth.get(row.month);
     if (target) target[key] = abs / 100;
     if (row.type === "debit") {

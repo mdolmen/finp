@@ -77,6 +77,7 @@ class MonthSliceOut(BaseModel):
     category_id: int | None
     category_name: str | None
     total_cents: int
+    is_planned: bool = False
 
 
 class SummaryParams(BaseModel):
@@ -148,6 +149,33 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
         )
         for r in conn.execute(sql, sql_params).fetchall()
     ]
+
+    # Planned operations layered in as their own slice. Aggregated by month
+    # and sign so the chart can render a single 'Opérations prévues' bucket
+    # per month per side. They ignore filters — KPIs reflect realized data,
+    # the planned series is informative only.
+    from finp import planned_operations as planned
+
+    planned_rows = planned.list_in_range(conn, start, end)
+    planned_by_key: dict[tuple[str, str], int] = {}
+    for p in planned_rows:
+        month_key = p.date[:7]
+        side = "debit" if p.montant_cents < 0 else "credit"
+        planned_by_key[(month_key, side)] = planned_by_key.get((month_key, side), 0) + abs(
+            p.montant_cents
+        )
+    for (month_key, side), total in planned_by_key.items():
+        rows.append(
+            MonthSliceOut(
+                month=month_key,
+                type=side,
+                category_id=None,
+                category_name="Opérations prévues",
+                total_cents=total,
+                is_planned=True,
+            )
+        )
+
     return SummaryOut(months=months, rows=rows)
 
 
