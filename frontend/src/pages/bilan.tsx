@@ -594,19 +594,32 @@ function BilanChart({
                     return <Cell key={i} fill="transparent" />;
                   }
                   const accent = s.type === "debit" ? "var(--debit)" : "var(--credit)";
-                  // Dim every Cell that isn't part of the hovered month+side.
-                  const dimmed =
+                  const isHovered =
                     hovered !== null &&
-                    !(hovered.month === row.month && hovered.type === s.type);
+                    hovered.month === row.month &&
+                    hovered.type === s.type;
+                  // Hovered cells get a white outline. Non-hovered planned
+                  // cells keep their dashed accent stroke.
+                  const stroke = isHovered
+                    ? "#fff"
+                    : meta.isPlanned
+                      ? accent
+                      : undefined;
+                  const strokeWidth = isHovered ? 1.5 : meta.isPlanned ? 1.5 : 0;
+                  const strokeOpacity = isHovered ? 1 : meta.isPlanned ? 0.7 : 0;
+                  const strokeDasharray = isHovered
+                    ? undefined
+                    : meta.isPlanned
+                      ? "4 3"
+                      : undefined;
                   return (
                     <Cell
                       key={i}
                       fill={meta.fill}
-                      fillOpacity={dimmed ? 0.3 : 1}
-                      stroke={meta.isPlanned ? accent : undefined}
-                      strokeOpacity={meta.isPlanned ? 0.7 : 0}
-                      strokeWidth={meta.isPlanned ? 1.5 : 0}
-                      strokeDasharray={meta.isPlanned ? "4 3" : undefined}
+                      stroke={stroke}
+                      strokeOpacity={strokeOpacity}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={strokeDasharray}
                       onMouseEnter={() =>
                         setHovered({ month: row.month, type: s.type })
                       }
