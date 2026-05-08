@@ -57,18 +57,24 @@ export function BilanPage() {
     }
   }, []);
 
-  // Load filter options + the unfiltered summary (for the y-scale lock).
+  // Filter options + planned ops are independent of the time window.
   useEffect(() => {
     bilanApi
       .filterOptions()
       .then(setOptions)
       .catch((e) => setError(formatError(e)));
-    bilanApi
-      .summary({})
-      .then((s) => setYMaxEuros(computeYMaxEuros(s)))
-      .catch((e) => setError(formatError(e)));
     refreshPlanned();
   }, [refreshPlanned]);
+
+  // Y-axis upper bound is locked to the max stack height of the *unfiltered*
+  // window for the current month offset. Recomputed whenever the offset
+  // changes so the scale fits the current view.
+  useEffect(() => {
+    bilanApi
+      .summary({ today: shiftedTodayIso(monthOffset) })
+      .then((s) => setYMaxEuros(computeYMaxEuros(s)))
+      .catch((e) => setError(formatError(e)));
+  }, [monthOffset]);
 
   async function handleDeletePlanned() {
     if (!deletingPlanned) return;
