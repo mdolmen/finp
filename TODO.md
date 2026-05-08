@@ -106,16 +106,18 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
     - [x] Tooltip: category name + amount on segment hover.
 - [x] Internal operations excluded.
 - [ ] Remove space between expense and revenu bars.
-- [ ] Shades of color, the darker the more important the montant
-    - Revenu: as many shades of green as categories, the darker at the bottom
-    - Expense: as many shades of red as categories, the darker at the bottom
-- [ ] The tooltip on hover shows the categories in ascending order of montants, with a light separator between expenses and revenus
+- [ ] Revenus to the left and Expenses to the right
+- [ ] Shades of a color, the darker the more important the montant is
+    - Revenu: as many shades of green as categories, the darker (greater abs(montant)) at the bottom
+    - Expense: as many shades of red as categories, the darker (greater abs(montant)) at the bottom
+- [ ] The tooltip on hover shows is on a single bar, not on a tuple, the style of the hover bar changes with a visual cue indicating the focus.
+- [ ] The tooltp content shows categories in ascending order of montant.
 - [ ] Diff of a tuple of stacked bar totals at the bottom of it (green font color if positive, red otherwise)
 - [ ] The y-scale of the histogram does not change when changing the filters
-- [ ] All boxes ticked by default
+- [ ] All boxes ticked by default in the filter
 - [ ] Two-columns layout below the histogram
-    - [ ] Column 1 - KPIs: Solde, Revenus/Dépenses mensuel attendu, Total crédits/débits
-    - [ ] Column 2 - Opérations prévues: A list of planned operations (date, montant, libellé). This category is added to the histogram, the corresponding bloc border is dashed. An "Ajouter" button to open a modal to add such an operation
+    - [ ] Column 1 - KPIs: Solde, Revenus/Dépenses mensuel attendu, Total crédits/débits. Aligned vertically.
+    - [ ] Column 2 - Opérations prévues: A list of planned operations (date, montant, libellé). This category is added to the histogram, the corresponding bloc borders are dashed. An "Ajouter" button to open a modal to add such an operation.
 
 ## M9 — Polish pass
 
