@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MultiSelect } from "@/components/MultiSelect";
-import { bilanApi, plannedApi, RpcError } from "@/lib/api";
+import { accountsApi, bilanApi, plannedApi, RpcError } from "@/lib/api";
 import type {
+  Account,
   BilanFilterOptions,
   BilanSummary,
   PlannedOperation,
@@ -44,6 +45,7 @@ export function BilanPage() {
   // data so applying filters never rescales the chart (just empties it).
   const [yMaxEuros, setYMaxEuros] = useState<number | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [accountsList, setAccountsList] = useState<Account[]>([]);
   const [planned, setPlanned] = useState<PlannedOperation[]>([]);
   const [addPlannedOpen, setAddPlannedOpen] = useState(false);
   const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
@@ -57,11 +59,16 @@ export function BilanPage() {
     }
   }, []);
 
-  // Filter options + planned ops are independent of the time window.
+  // Filter options + planned ops + accounts (for the Solde KPI) are
+  // independent of the time window.
   useEffect(() => {
     bilanApi
       .filterOptions()
       .then(setOptions)
+      .catch((e) => setError(formatError(e)));
+    accountsApi
+      .list()
+      .then(setAccountsList)
       .catch((e) => setError(formatError(e)));
     refreshPlanned();
   }, [refreshPlanned]);
@@ -181,7 +188,10 @@ export function BilanPage() {
       <BilanChart summary={summary} yMaxEuros={yMaxEuros} />
 
       <div className="grid grid-cols-2 gap-4 mt-4">
-        <KpiPanel summary={summary} />
+        <KpiPanel
+          summary={summary}
+          soldeCents={selectedAccountsSoldeCents(accountsList, accountIds)}
+        />
         <PlannedPanel
           planned={planned}
           onAdd={() => setAddPlannedOpen(true)}
@@ -226,8 +236,14 @@ export function BilanPage() {
   );
 }
 
-function KpiPanel({ summary }: { summary: BilanSummary | null }) {
-  const kpis = useMemo(() => computeKpis(summary), [summary]);
+function KpiPanel({
+  summary,
+  soldeCents,
+}: {
+  summary: BilanSummary | null;
+  soldeCents: number;
+}) {
+  const kpis = useMemo(() => computeKpis(summary, soldeCents), [summary, soldeCents]);
   const rows: { label: string; value: number; signed?: boolean }[] = [
     { label: fr.bilan.kpiSolde, value: kpis.soldeCents, signed: true },
     { label: fr.bilan.kpiAvgCredits, value: kpis.avgCreditCents },
@@ -418,7 +434,10 @@ function AddPlannedDialog({
   );
 }
 
-function computeKpis(summary: BilanSummary | null): {
+function computeKpis(
+  summary: BilanSummary | null,
+  soldeCents: number,
+): {
   soldeCents: number;
   totalCreditCents: number;
   totalDebitCents: number;
@@ -427,7 +446,7 @@ function computeKpis(summary: BilanSummary | null): {
 } {
   if (!summary) {
     return {
-      soldeCents: 0,
+      soldeCents,
       totalCreditCents: 0,
       totalDebitCents: 0,
       avgCreditCents: 0,
@@ -443,12 +462,24 @@ function computeKpis(summary: BilanSummary | null): {
   }
   const months = Math.max(1, summary.months.length);
   return {
-    soldeCents: totalCreditCents - totalDebitCents,
+    // Solde is the running balance across selected accounts; it does NOT
+    // depend on the summary window (a true balance, not an avg).
+    soldeCents,
     totalCreditCents,
     totalDebitCents,
     avgCreditCents: Math.round(totalCreditCents / months),
     avgDebitCents: Math.round(totalDebitCents / months),
   };
+}
+
+function selectedAccountsSoldeCents(accounts: Account[], selectedIds: number[]): number {
+  // Empty selection means "all accounts" semantically (matches MultiSelect's
+  // 'Tous' default), so we sum across the whole list in that case.
+  const pool =
+    selectedIds.length === 0
+      ? accounts
+      : accounts.filter((a) => selectedIds.includes(a.id));
+  return pool.reduce((sum, a) => sum + a.current_balance_cents, 0);
 }
 
 const EUR_FMT_CENTS = new Intl.NumberFormat("fr-FR", {

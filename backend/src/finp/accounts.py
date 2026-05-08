@@ -28,6 +28,11 @@ class Account:
     # the most recent successful insert. Re-imports of the same rows
     # don't bump it (dedup skips them), so it tracks "last new data".
     last_import_at: str | None
+    initial_balance_cents: int
+    initial_balance_date: str | None
+    # Running solde: initial balance + every operation on or after the
+    # opening date (or every operation if no opening date is set).
+    current_balance_cents: int
 
 
 def _row_to_account(row: sqlite3.Row) -> Account:
@@ -38,12 +43,22 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         csv_mapping=json.loads(raw) if raw else None,
         created_at=row["created_at"],
         last_import_at=row["last_import_at"],
+        initial_balance_cents=row["initial_balance_cents"],
+        initial_balance_date=row["initial_balance_date"],
+        current_balance_cents=row["current_balance_cents"],
     )
 
 
 _SELECT_ACCOUNT = (
     "SELECT a.id, a.name, a.csv_mapping_json, a.created_at,"
-    " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at"
+    " a.initial_balance_cents, a.initial_balance_date,"
+    " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at,"
+    " a.initial_balance_cents + COALESCE("
+    "   (SELECT SUM(o.montant_cents) FROM operations o"
+    "    WHERE o.account_id = a.id"
+    "      AND (a.initial_balance_date IS NULL OR o.date >= a.initial_balance_date)),"
+    "   0"
+    " ) AS current_balance_cents"
     " FROM accounts a"
 )
 
@@ -86,6 +101,24 @@ def set_csv_mapping(
     cur = conn.execute(
         "UPDATE accounts SET csv_mapping_json = ? WHERE id = ?",
         (encoded, account_id),
+    )
+    if cur.rowcount == 0:
+        raise AccountNotFoundError(f"account id={account_id}")
+    return get(conn, account_id)
+
+
+def set_initial_balance(
+    conn: sqlite3.Connection,
+    account_id: int,
+    *,
+    cents: int,
+    date: str | None,
+) -> Account:
+    """Set the opening balance + its anchor date for the running solde."""
+    cur = conn.execute(
+        "UPDATE accounts SET initial_balance_cents = ?, initial_balance_date = ?"
+        " WHERE id = ?",
+        (cents, date, account_id),
     )
     if cur.rowcount == 0:
         raise AccountNotFoundError(f"account id={account_id}")

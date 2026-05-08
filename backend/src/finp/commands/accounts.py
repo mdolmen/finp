@@ -21,6 +21,9 @@ class AccountOut(BaseModel):
     csv_mapping: dict[str, Any] | None
     created_at: str
     last_import_at: str | None
+    initial_balance_cents: int
+    initial_balance_date: str | None
+    current_balance_cents: int
 
 
 class CreateParams(BaseModel):
@@ -39,6 +42,12 @@ class RenameParams(BaseModel):
 class SetCsvMappingParams(BaseModel):
     id: int
     mapping: dict[str, Any] | None
+
+
+class SetInitialBalanceParams(BaseModel):
+    id: int
+    cents: int
+    date: str | None = None
 
 
 def _list(conn: sqlite3.Connection, _: EmptyParams) -> list[AccountOut]:
@@ -61,6 +70,14 @@ def _set_csv_mapping(conn: sqlite3.Connection, params: SetCsvMappingParams) -> A
     return AccountOut.model_validate(accounts.set_csv_mapping(conn, params.id, params.mapping))
 
 
+def _set_initial_balance(
+    conn: sqlite3.Connection, params: SetInitialBalanceParams
+) -> AccountOut:
+    return AccountOut.model_validate(
+        accounts.set_initial_balance(conn, params.id, cents=params.cents, date=params.date)
+    )
+
+
 def _delete(conn: sqlite3.Connection, params: IdParams) -> None:
     accounts.delete(conn, params.id)
 
@@ -71,5 +88,6 @@ METHODS: dict[str, Command] = {
     "accounts.create": Command(CreateParams, _create),
     "accounts.rename": Command(RenameParams, _rename),
     "accounts.set_csv_mapping": Command(SetCsvMappingParams, _set_csv_mapping),
+    "accounts.set_initial_balance": Command(SetInitialBalanceParams, _set_initial_balance),
     "accounts.delete": Command(IdParams, _delete),
 }

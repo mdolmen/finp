@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Upload, Wifi } from "lucide-react";
+import { Plus, Settings, Trash2, Upload, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { accountsApi, RpcError } from "@/lib/api";
 import type { Account } from "@/lib/api";
+import { formatEuros as formatEurosFromCents } from "@/lib/format";
 import { fr } from "@/i18n/fr";
 
 const DATE_TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
@@ -37,6 +39,7 @@ export function ComptesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
+  const [settingsFor, setSettingsFor] = useState<Account | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -81,8 +84,16 @@ export function ComptesPage() {
               key={acc.id}
               className="flex items-center gap-2 px-3 py-2 text-sm"
             >
-              <span className="flex-1 font-medium">{acc.name}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="font-medium">{acc.name}</span>
+              <span
+                className={`text-sm tabular-nums ${
+                  acc.current_balance_cents < 0 ? "text-debit" : "text-credit"
+                }`}
+                title={fr.comptes.currentBalance}
+              >
+                {formatEurosFromCents(acc.current_balance_cents)}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                 {formatLastImport(acc.last_import_at)}
               </span>
               <Button
@@ -98,6 +109,16 @@ export function ComptesPage() {
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
                 {fr.comptes.import}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSettingsFor(acc)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={fr.comptes.settings}
+                title={fr.comptes.settings}
+              >
+                <Settings className="size-3.5" />
               </Button>
               <Button
                 size="sm"
@@ -124,6 +145,17 @@ export function ComptesPage() {
           open={!!importing}
           onOpenChange={(v) => !v && setImporting(null)}
           onImported={refresh}
+        />
+      )}
+
+      {settingsFor && (
+        <AccountSettingsDialog
+          account={settingsFor}
+          onClose={() => setSettingsFor(null)}
+          onSaved={async () => {
+            setSettingsFor(null);
+            await refresh();
+          }}
         />
       )}
 
@@ -214,6 +246,104 @@ function AddAccountDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function AccountSettingsDialog({
+  account,
+  onClose,
+  onSaved,
+}: {
+  account: Account;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [balanceText, setBalanceText] = useState(
+    account.initial_balance_cents !== 0
+      ? (account.initial_balance_cents / 100).toString().replace(".", ",")
+      : "",
+  );
+  const [date, setDate] = useState(account.initial_balance_date ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cents = parseEurosToCents(balanceText);
+  // An empty value clears the balance back to 0; the date is optional too.
+  const valid = cents !== null || balanceText.trim() === "";
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await accountsApi.setInitialBalance(
+        account.id,
+        cents ?? 0,
+        date.trim() === "" ? null : date,
+      );
+      onSaved();
+    } catch (e) {
+      setError(formatError(e));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {fr.comptes.settingsTitle.replace("{name}", account.name)}
+          </DialogTitle>
+          <DialogDescription>{fr.comptes.settingsDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{fr.comptes.fieldInitialBalance}</Label>
+              <Input
+                value={balanceText}
+                onChange={(e) => setBalanceText(e.target.value)}
+                placeholder="0,00"
+                inputMode="decimal"
+                className="tabular-nums"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{fr.comptes.fieldInitialBalanceDate}</Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {fr.comptes.initialBalanceHint}
+          </p>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
+              {fr.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!valid || submitting}>
+              {fr.comptes.save}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function parseEurosToCents(input: string): number | null {
+  const cleaned = input.replace(/[\s   ]/g, "").replace(",", ".");
+  if (!cleaned || cleaned === "-") return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
 }
 
 function formatError(e: unknown): string {

@@ -9,5 +9,7 @@ export const accountsApi = {
     rpc<Account>("accounts.rename", { id, name }),
   setCsvMapping: (id: number, mapping: Record<string, unknown> | null) =>
     rpc<Account>("accounts.set_csv_mapping", { id, mapping }),
+  setInitialBalance: (id: number, cents: number, date: string | null) =>
+    rpc<Account>("accounts.set_initial_balance", { id, cents, date }),
   delete: (id: number) => rpc<null>("accounts.delete", { id }),
 };

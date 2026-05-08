@@ -9,6 +9,9 @@ export type Account = {
   csv_mapping: Record<string, unknown> | null;
   created_at: string;
   last_import_at: string | null;
+  initial_balance_cents: number;
+  initial_balance_date: string | null;
+  current_balance_cents: number;
 };
 
 export type Category = {
