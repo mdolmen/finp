@@ -107,10 +107,10 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [x] Internal operations excluded.
 - [x] Remove space between expense and revenu bars.
 - [x] Revenus to the left and Expenses to the right
-- [ ] Shades of a color, the darker the more important the montant is
+- [x] Shades of a color, the darker the more important the montant is
     - Revenu: as many shades of green as categories, the darker (greater abs(montant)) at the bottom
     - Expense: as many shades of red as categories, the darker (greater abs(montant)) at the bottom
-- [ ] The tooltip on hover shows is on a single bar, not on a tuple, the style of the hover bar changes with a visual cue indicating the focus.
+- [x] The tooltip on hover shows is on a single bar, not on a tuple, the style of the hover bar changes with a visual cue indicating the focus.
 - [x] The tooltp content shows categories in ascending order of montant.
 - [x] Diff of a tuple of stacked bar at the bottom it (green font color if positive, red otherwise)
 - [x] The y-scale of the histogram does not change when changing the filters

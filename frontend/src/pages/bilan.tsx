@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -43,6 +43,7 @@ export function BilanPage() {
   // The y-axis upper bound is locked to the max stack height in the unfiltered
   // data so applying filters never rescales the chart (just empties it).
   const [yMaxEuros, setYMaxEuros] = useState<number | null>(null);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [planned, setPlanned] = useState<PlannedOperation[]>([]);
   const [addPlannedOpen, setAddPlannedOpen] = useState(false);
   const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
@@ -79,6 +80,7 @@ export function BilanPage() {
       const includeNoCatDebit = debitIds.includes(NO_CATEGORY_SENTINEL);
       const includeNoCatCredit = creditIds.includes(NO_CATEGORY_SENTINEL);
       const s = await bilanApi.summary({
+        today: shiftedTodayIso(monthOffset),
         account_ids: accountIds.length ? accountIds : null,
         debit_category_ids: realIds(debitIds),
         credit_category_ids: realIds(creditIds),
@@ -105,13 +107,14 @@ export function BilanPage() {
     setCreditIds(creditAll);
   }, [options]);
 
-  // Refetch the summary whenever filters change.
+  // Refetch the summary whenever filters or the month offset change.
   useEffect(() => {
     if (!options) return; // wait until the initial defaults are applied
     const includeNoCatDebit = debitIds.includes(NO_CATEGORY_SENTINEL);
     const includeNoCatCredit = creditIds.includes(NO_CATEGORY_SENTINEL);
     bilanApi
       .summary({
+        today: shiftedTodayIso(monthOffset),
         account_ids: accountIds.length ? accountIds : null,
         debit_category_ids: realIds(debitIds),
         credit_category_ids: realIds(creditIds),
@@ -120,11 +123,11 @@ export function BilanPage() {
       })
       .then(setSummary)
       .catch((e) => setError(formatError(e)));
-  }, [accountIds, debitIds, creditIds, options]);
+  }, [accountIds, debitIds, creditIds, options, monthOffset]);
 
   return (
     <div className="px-6 py-5">
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         <MultiSelect
           label={fr.bilan.filterAccounts}
           options={
@@ -145,6 +148,26 @@ export function BilanPage() {
           selected={creditIds}
           onChange={setCreditIds}
         />
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setMonthOffset((o) => o - 1)}
+            aria-label={fr.bilan.shiftEarlier}
+            title={fr.bilan.shiftEarlier}
+          >
+            <ChevronLeft className="size-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setMonthOffset((o) => o + 1)}
+            aria-label={fr.bilan.shiftLater}
+            title={fr.bilan.shiftLater}
+          >
+            <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
@@ -448,6 +471,18 @@ function categoryOptions(
   return list;
 }
 
+function shiftedTodayIso(monthOffset: number): string {
+  // Current date with the month shifted by ``monthOffset``. Only the
+  // year+month is meaningful for the bilan window; setMonth handles
+  // year rollover automatically.
+  const d = new Date();
+  d.setMonth(d.getMonth() + monthOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function realIds(ids: number[]): number[] | null {
   const filtered = ids.filter((id) => id !== NO_CATEGORY_SENTINEL);
   return filtered.length ? filtered : null;
@@ -497,6 +532,7 @@ function BilanChart({
             margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
             barGap={0}
             barCategoryGap="14%"
+            onMouseLeave={() => setHovered(null)}
           >
             <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="var(--border)" />
             <XAxis

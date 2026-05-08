@@ -38,6 +38,8 @@ export const fr = {
     plannedFieldMontant: "Montant (€)",
     plannedFieldLibelle: "Libellé",
     plannedConfirmDelete: "Supprimer l'opération prévue « {name} » ?",
+    shiftEarlier: "Mois précédent",
+    shiftLater: "Mois suivant",
   },
   operations: {
     title: "Opérations",
