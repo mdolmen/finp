@@ -484,7 +484,7 @@ function BilanChart({
 
   return (
     <div className="border border-border rounded-md p-3">
-      <div className="h-96">
+      <div className="h-[399px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={shaped.data}

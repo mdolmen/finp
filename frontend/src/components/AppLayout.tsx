@@ -42,7 +42,9 @@ export function AppLayout() {
             <Menu className="size-4" />
           </button>
           {title && (
-            <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-sm font-semibold tracking-wide uppercase">
+              {title}
+            </h1>
           )}
         </header>
         <main className="flex-1 overflow-auto">
