@@ -259,6 +259,12 @@ export function OperationsPage() {
       {error && <p className="text-sm text-destructive mb-2">{error}</p>}
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
 
+      {ops !== null && (
+        <div className="flex justify-end mb-1.5 px-1 text-xs text-muted-foreground tabular-nums">
+          {fr.operations.count.replace("{n}", String(ops.length))}
+        </div>
+      )}
+
       <OperationsList
         ops={ops}
         cats={cats}
