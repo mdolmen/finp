@@ -52,6 +52,8 @@ export type OperationFilters = {
   date_from?: string | null;
   date_to?: string | null;
   search?: string | null;
+  montant_op?: ">" | "<" | "==" | null;
+  montant_value_cents?: number | null;
   limit?: number | null;
   offset?: number;
 };

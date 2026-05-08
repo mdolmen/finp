@@ -45,6 +45,9 @@ export function OperationsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 200);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [montantOp, setMontantOp] = useState<">" | "<" | "==">(">");
+  const [montantText, setMontantText] = useState("");
+  const debouncedMontant = useDebounced(montantText, 200);
 
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
@@ -60,6 +63,8 @@ export function OperationsPage() {
     return t;
   }, [filters]);
 
+  const montantCents = useMemo(() => parseEurosToCents(debouncedMontant), [debouncedMontant]);
+
   const refresh = useCallback(async () => {
     if (types.length === 0) {
       setOps([]);
@@ -73,13 +78,15 @@ export function OperationsPage() {
         types,
         search: debouncedSearch.trim() || null,
         include_no_category: filters.uncategorizedOnly,
+        montant_op: montantCents !== null ? montantOp : null,
+        montant_value_cents: montantCents,
         limit: FETCH_LIMIT,
       });
       setOps(rows);
     } catch (e) {
       setError(formatError(e));
     }
-  }, [types, debouncedSearch, filters.uncategorizedOnly]);
+  }, [types, debouncedSearch, filters.uncategorizedOnly, montantOp, montantCents]);
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
@@ -103,6 +110,16 @@ export function OperationsPage() {
 
   function setFiltersAndClear(updater: (f: Filters) => Filters) {
     setFilters(updater);
+    setSelected(new Set());
+  }
+
+  function setMontantTextAndClear(v: string) {
+    setMontantText(v);
+    setSelected(new Set());
+  }
+
+  function setMontantOpAndClear(v: ">" | "<" | "==") {
+    setMontantOp(v);
     setSelected(new Set());
   }
 
@@ -181,12 +198,38 @@ export function OperationsPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         <Input
           value={search}
           onChange={(e) => setSearchAndClear(e.target.value)}
           placeholder={fr.operations.searchPlaceholder}
           className="max-w-sm h-8"
+        />
+        <Select
+          value={montantOp}
+          onValueChange={(v) => setMontantOpAndClear(v as ">" | "<" | "==")}
+        >
+          <SelectTrigger className="h-8 w-14">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value=">" title={fr.operations.montantOpGt}>
+              {">"}
+            </SelectItem>
+            <SelectItem value="<" title={fr.operations.montantOpLt}>
+              {"<"}
+            </SelectItem>
+            <SelectItem value="==" title={fr.operations.montantOpEq}>
+              {"="}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          value={montantText}
+          onChange={(e) => setMontantTextAndClear(e.target.value)}
+          placeholder={fr.operations.montantPlaceholder}
+          inputMode="decimal"
+          className="w-32 h-8 tabular-nums"
         />
       </div>
 
@@ -512,4 +555,14 @@ function deriveType(op: Operation, newCatId: number | null, cats: Category[]): O
 
 function formatError(e: unknown): string {
   return e instanceof RpcError ? e.message : String(e);
+}
+
+// Accepts "1234,56", "1234.56", or "1 234,56". Returns null when the input
+// can't be parsed — including the empty string, which means "no filter".
+function parseEurosToCents(input: string): number | null {
+  const cleaned = input.replace(/[\s   ]/g, "").replace(",", ".");
+  if (!cleaned) return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
 }

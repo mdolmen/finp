@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,6 +60,8 @@ class ListParams(BaseModel):
     date_from: str | None = None
     date_to: str | None = None
     search: str | None = None
+    montant_op: Literal[">", "<", "=="] | None = None
+    montant_value_cents: int | None = None
     limit: int | None = None
     offset: int = 0
 
@@ -98,6 +101,8 @@ def _list(conn: sqlite3.Connection, params: ListParams) -> list[OperationOut]:
         account_ids=params.account_ids,
         category_ids=params.category_ids,
         include_no_category=params.include_no_category,
+        montant_op=params.montant_op,
+        montant_value_cents=params.montant_value_cents,
         types=params.types,
         date_from=params.date_from,
         date_to=params.date_to,

@@ -163,6 +163,9 @@ def _build_fts_query(text: str) -> str:
     return " ".join(f"{tok}*" for tok in tokens)
 
 
+_MONTANT_OPS = {">", "<", "=="}
+
+
 def list_(
     conn: sqlite3.Connection,
     *,
@@ -173,6 +176,8 @@ def list_(
     date_from: str | None = None,
     date_to: str | None = None,
     search: str | None = None,
+    montant_op: str | None = None,
+    montant_value_cents: int | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[Operation]:
@@ -214,6 +219,14 @@ def list_(
         if fts:
             where.append("id IN (SELECT rowid FROM operations_fts WHERE operations_fts MATCH ?)")
             params.append(fts)
+
+    if montant_op is not None and montant_value_cents is not None:
+        if montant_op not in _MONTANT_OPS:
+            raise ValueError(f"unsupported montant_op: {montant_op!r}")
+        # Filter on absolute value: '|montant| op value'. SQLite ABS() handles
+        # the sign so the same filter works for debits and credits.
+        where.append(f"ABS(montant_cents) {montant_op} ?")
+        params.append(abs(montant_value_cents))
 
     sql = (
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"

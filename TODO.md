@@ -77,15 +77,16 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M6 — Page "Opérations"
 
-- [ ] Search bar (debounced 200ms) → FTS5 query.
-- [ ] Filter row: `[Tout sélectionner]` `[Sans catégorie]` `[Débits ✓]` `[Crédits ✓]` `[Internal]` (default: débits + crédits checked).
-- [ ] List rows: date | montant (right-aligned, signed, EUR) | libellé | category select.
-    - [ ] Subtle border or shadow per type (red / green / blue).
-    - [ ] Per-row checkbox for bulk select.
-- [ ] Bulk actions bar appears when rows selected: "Assigner catégorie", "Effacer catégorie".
-- [ ] Category assignment uses a single flat select listing all categories (alphabetical).
-- [ ] Pagination or virtualized list — pick virtualization (`@tanstack/react-virtual`) since exports can be large.
-- [ ] [Appliquer les règles] button (runs `apply_rules_bulk` on uncategorized).
+- [x] Search bar (debounced 200ms) → FTS5 query.
+- [x] Filter row: `[Tout sélectionner]` `[Sans catégorie]` `[Débits ✓]` `[Crédits ✓]` `[Internal]` (default: débits + crédits checked).
+- [x] List rows: date | montant (right-aligned, signed, EUR) | libellé | category select.
+    - [x] Subtle border or shadow per type (red / green / blue).
+    - [x] Per-row checkbox for bulk select.
+- [x] Bulk actions bar appears when rows selected: "Assigner catégorie", "Effacer catégorie".
+- [x] Category assignment uses a single flat select listing all categories (alphabetical).
+- [x] Pagination or virtualized list — pick virtualization (`@tanstack/react-virtual`) since exports can be large.
+- [x] [Appliquer les règles] button (runs `apply_rules_bulk` on uncategorized).
+- [ ] "Montant" filter beside the search bar (greater, lesser, equal)
 
 ## M7 — Page "Règles"
 
@@ -104,6 +105,17 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
     - [x] Alternating two shades of red (expenses) / green (revenus).
     - [x] Tooltip: category name + amount on segment hover.
 - [x] Internal operations excluded.
+- [ ] Remove space between expense and revenu bars.
+- [ ] Shades of color, the darker the more important the montant
+    - Revenu: as many shades of green as categories, the darker at the bottom
+    - Expense: as many shades of red as categories, the darker at the bottom
+- [ ] The tooltip on hover shows the categories in ascending order of montants, with a light separator between expenses and revenus
+- [ ] Diff of a tuple of stacked bar totals at the bottom of it (green font color if positive, red otherwise)
+- [ ] The y-scale of the histogram does not change when changing the filters
+- [ ] All boxes ticked by default
+- [ ] Two-columns layout below the histogram
+    - [ ] Column 1 - KPIs: Solde, Revenus/Dépenses mensuel attendu, Total crédits/débits
+    - [ ] Column 2 - Opérations prévues: A list of planned operations (date, montant, libellé). This category is added to the histogram, the corresponding bloc border is dashed. An "Ajouter" button to open a modal to add such an operation
 
 ## M9 — Polish pass
 
@@ -136,9 +148,12 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [ ] UI to list configured workflows, last-trigger status.
 - [ ] Add a sidebar entry once functional.
 
+### Page "Projets"
+
+- [ ] Define buckets for a project. A project has a name and a description. We can define a goal. Adding money to the bucket removes it to the available "solde".
+
 ### Misc later
 
 - [ ] Multi-currency (would require a currency column on accounts/operations and an FX rate table).
 - [ ] Export (CSV/JSON) of operations.
 - [ ] Backup / restore of the SQLite file from the gear menu.
-- [ ] Budget targets per category.
