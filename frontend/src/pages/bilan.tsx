@@ -30,8 +30,8 @@ import type {
   BilanSummary,
   PlannedOperation,
 } from "@/lib/api";
-import { formatDate } from "@/lib/format";
-import { fr } from "@/i18n/fr";
+import { formatDate, formatEuros, formatMonth } from "@/lib/format";
+import { t } from "@/i18n";
 
 const NO_CATEGORY_SENTINEL = -1 as const;
 
@@ -142,7 +142,7 @@ export function BilanPage() {
     <div className="px-6 py-5">
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <MultiSelect
-          label={fr.bilan.filterAccounts}
+          label={t.bilan.filterAccounts}
           options={
             options?.accounts.map((a) => ({ value: a.id, label: a.name })) ?? []
           }
@@ -150,13 +150,13 @@ export function BilanPage() {
           onChange={setAccountIds}
         />
         <MultiSelect
-          label={fr.bilan.filterDebits}
+          label={t.bilan.filterDebits}
           options={categoryOptions(options?.debit_categories, options?.debit_has_uncategorized)}
           selected={debitIds}
           onChange={setDebitIds}
         />
         <MultiSelect
-          label={fr.bilan.filterCredits}
+          label={t.bilan.filterCredits}
           options={categoryOptions(options?.credit_categories, options?.credit_has_uncategorized)}
           selected={creditIds}
           onChange={setCreditIds}
@@ -166,8 +166,8 @@ export function BilanPage() {
             size="sm"
             variant="outline"
             onClick={() => setMonthOffset((o) => o - 1)}
-            aria-label={fr.bilan.shiftEarlier}
-            title={fr.bilan.shiftEarlier}
+            aria-label={t.bilan.shiftEarlier}
+            title={t.bilan.shiftEarlier}
           >
             <ChevronLeft className="size-3.5" />
           </Button>
@@ -175,8 +175,8 @@ export function BilanPage() {
             size="sm"
             variant="outline"
             onClick={() => setMonthOffset((o) => o + 1)}
-            aria-label={fr.bilan.shiftLater}
-            title={fr.bilan.shiftLater}
+            aria-label={t.bilan.shiftLater}
+            title={t.bilan.shiftLater}
           >
             <ChevronRight className="size-3.5" />
           </Button>
@@ -225,10 +225,10 @@ export function BilanPage() {
         onOpenChange={(v) => !v && setDeletingPlanned(null)}
         title={
           deletingPlanned
-            ? fr.bilan.plannedConfirmDelete.replace("{name}", deletingPlanned.libelle)
+            ? t.bilan.plannedConfirmDelete.replace("{name}", deletingPlanned.libelle)
             : ""
         }
-        confirmLabel={fr.common.delete}
+        confirmLabel={t.common.delete}
         destructive
         onConfirm={handleDeletePlanned}
       />
@@ -245,11 +245,11 @@ function KpiPanel({
 }) {
   const kpis = useMemo(() => computeKpis(summary, soldeCents), [summary, soldeCents]);
   const rows: { label: string; value: number; signed?: boolean }[] = [
-    { label: fr.bilan.kpiSolde, value: kpis.soldeCents, signed: true },
-    { label: fr.bilan.kpiAvgCredits, value: kpis.avgCreditCents },
-    { label: fr.bilan.kpiAvgDebits, value: kpis.avgDebitCents },
-    { label: fr.bilan.kpiTotalCredits, value: kpis.totalCreditCents },
-    { label: fr.bilan.kpiTotalDebits, value: kpis.totalDebitCents },
+    { label: t.bilan.kpiSolde, value: kpis.soldeCents, signed: true },
+    { label: t.bilan.kpiAvgCredits, value: kpis.avgCreditCents },
+    { label: t.bilan.kpiAvgDebits, value: kpis.avgDebitCents },
+    { label: t.bilan.kpiTotalCredits, value: kpis.totalCreditCents },
+    { label: t.bilan.kpiTotalDebits, value: kpis.totalDebitCents },
   ];
   return (
     <div className="border border-border rounded-md p-4">
@@ -283,7 +283,7 @@ function KpiRow({
     >
       <span className="text-muted-foreground">{label}</span>
       <span className={`font-semibold tabular-nums ${cls}`}>
-        {(signed && value > 0 ? "+" : "") + formatEurosFromCents(value)}
+        {(signed && value > 0 ? "+" : "") + formatEuros(value)}
       </span>
     </li>
   );
@@ -302,15 +302,15 @@ function PlannedPanel({
     <div className="border border-border rounded-md p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-foreground">
-          {fr.bilan.plannedTitle}
+          {t.bilan.plannedTitle}
         </h2>
         <Button size="sm" variant="outline" onClick={onAdd}>
           <Plus className="size-3.5" />
-          {fr.common.add}
+          {t.common.add}
         </Button>
       </div>
       {planned.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.bilan.plannedEmpty}</p>
+        <p className="text-sm text-muted-foreground">{t.bilan.plannedEmpty}</p>
       ) : (
         <ul className="divide-y divide-border">
           {planned.map((p) => (
@@ -323,7 +323,7 @@ function PlannedPanel({
                   p.montant_cents < 0 ? "text-debit" : "text-credit"
                 }`}
               >
-                {formatEurosFromCents(p.montant_cents)}
+                {formatEuros(p.montant_cents)}
               </span>
               <span className="flex-1 truncate" title={p.libelle}>
                 {p.libelle}
@@ -333,7 +333,7 @@ function PlannedPanel({
                 variant="ghost"
                 onClick={() => onDelete(p)}
                 className="text-muted-foreground hover:text-destructive"
-                aria-label={fr.common.delete}
+                aria-label={t.common.delete}
               >
                 <Trash2 className="size-3.5" />
               </Button>
@@ -384,13 +384,13 @@ function AddPlannedDialog({
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{fr.bilan.plannedAddTitle}</DialogTitle>
-          <DialogDescription>{fr.bilan.plannedAddDescription}</DialogDescription>
+          <DialogTitle>{t.bilan.plannedAddTitle}</DialogTitle>
+          <DialogDescription>{t.bilan.plannedAddDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">{fr.bilan.plannedFieldDate}</Label>
+              <Label className="text-xs">{t.bilan.plannedFieldDate}</Label>
               <Input
                 type="date"
                 value={date}
@@ -399,7 +399,7 @@ function AddPlannedDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{fr.bilan.plannedFieldMontant}</Label>
+              <Label className="text-xs">{t.bilan.plannedFieldMontant}</Label>
               <Input
                 value={montantText}
                 onChange={(e) => setMontantText(e.target.value)}
@@ -411,7 +411,7 @@ function AddPlannedDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">{fr.bilan.plannedFieldLibelle}</Label>
+            <Label className="text-xs">{t.bilan.plannedFieldLibelle}</Label>
             <Input
               value={libelle}
               onChange={(e) => setLibelle(e.target.value)}
@@ -422,10 +422,10 @@ function AddPlannedDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-              {fr.common.cancel}
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={!valid || submitting}>
-              {fr.common.add}
+              {t.common.add}
             </Button>
           </DialogFooter>
         </form>
@@ -482,15 +482,6 @@ function selectedAccountsSoldeCents(accounts: Account[], selectedIds: number[]):
   return pool.reduce((sum, a) => sum + a.current_balance_cents, 0);
 }
 
-const EUR_FMT_CENTS = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-});
-
-function formatEurosFromCents(cents: number): string {
-  return EUR_FMT_CENTS.format(cents / 100);
-}
-
 function parseEurosToCents(input: string): number | null {
   const cleaned = input.replace(/[\s   ]/g, "").replace(",", ".");
   if (!cleaned || cleaned === "-") return null;
@@ -504,7 +495,7 @@ function categoryOptions(
   hasUncategorized: boolean | undefined,
 ): { value: number; label: string }[] {
   const list = cats?.map((c) => ({ value: c.id, label: c.name })) ?? [];
-  if (hasUncategorized) list.push({ value: NO_CATEGORY_SENTINEL, label: fr.common.noCategory });
+  if (hasUncategorized) list.push({ value: NO_CATEGORY_SENTINEL, label: t.common.noCategory });
   return list;
 }
 
@@ -554,10 +545,10 @@ function BilanChart({
   const shaped = useMemo(() => shapeChartData(summary), [summary]);
 
   if (summary === null) {
-    return <p className="text-sm text-muted-foreground">{fr.common.loading}</p>;
+    return <p className="text-sm text-muted-foreground">{t.common.loading}</p>;
   }
   if (shaped.series.length === 0) {
-    return <p className="text-sm text-muted-foreground">{fr.bilan.empty}</p>;
+    return <p className="text-sm text-muted-foreground">{t.bilan.empty}</p>;
   }
 
   return (
@@ -581,7 +572,7 @@ function BilanChart({
               height={40}
             />
             <YAxis
-              tickFormatter={(v) => formatEuros(v as number, { compact: true })}
+              tickFormatter={(v) => fmtEuros(v as number, { compact: true })}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickLine={false}
               axisLine={false}
@@ -626,7 +617,7 @@ function BilanChart({
                               : "var(--debit)",
                         }}
                       >
-                        {hoveredStack === "credit" ? fr.bilan.credits : fr.bilan.debits}
+                        {hoveredStack === "credit" ? t.bilan.credits : t.bilan.debits}
                       </span>
                     </p>
                     <ul className="space-y-0.5">
@@ -640,7 +631,7 @@ function BilanChart({
                             {it.meta.categoryName}
                           </span>
                           <span className="ml-auto tabular-nums">
-                            {formatEuros(it.value)}
+                            {fmtEuros(it.value)}
                           </span>
                         </li>
                       ))}
@@ -739,7 +730,7 @@ function MonthDiffTick({
           fill={diff >= 0 ? "var(--credit)" : "var(--debit)"}
           style={{ fontSize: 10, fontWeight: 500 }}
         >
-          {(diff >= 0 ? "+" : "") + formatEuros(diff, { compact: true })}
+          {(diff >= 0 ? "+" : "") + fmtEuros(diff, { compact: true })}
         </text>
       )}
     </g>
@@ -772,7 +763,7 @@ function shapeChartData(summary: BilanSummary | null): {
     if (!bucket) continue;
     const list = row.type === "debit" ? bucket.debit : bucket.credit;
     list.push({
-      name: row.category_name ?? fr.common.noCategory,
+      name: row.category_name ?? t.common.noCategory,
       valueEuros: Math.abs(row.total_cents) / 100,
       isPlanned: row.is_planned,
     });
@@ -859,40 +850,9 @@ function computeYMaxEuros(s: BilanSummary): number {
   return Math.max(100, Math.ceil(max / 100 / 100) * 100);
 }
 
-const MONTH_NAMES_FR = [
-  "janv.",
-  "févr.",
-  "mars",
-  "avr.",
-  "mai",
-  "juin",
-  "juil.",
-  "août",
-  "sept.",
-  "oct.",
-  "nov.",
-  "déc.",
-];
-
-function formatMonth(ym: string): string {
-  const [y, m] = ym.split("-");
-  const idx = parseInt(m, 10) - 1;
-  return `${MONTH_NAMES_FR[idx] ?? m} ${y.slice(2)}`;
-}
-
-const EUR_FMT = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
-const EUR_FMT_FULL = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-});
-
-// Local helper — values inside BilanChart are euros, not cents.
-function formatEuros(value: number, opts?: { compact?: boolean }): string {
-  return opts?.compact ? EUR_FMT.format(value) : EUR_FMT_FULL.format(value);
+// Chart values are euros (not cents) — multiply by 100 to use the shared helper.
+function fmtEuros(value: number, opts?: { compact?: boolean }): string {
+  return formatEuros(Math.round(value * 100), opts);
 }
 
 function formatError(e: unknown): string {
