@@ -48,6 +48,8 @@ export function OperationsPage() {
   const [montantOp, setMontantOp] = useState<">" | "<" | "==">(">");
   const [montantText, setMontantText] = useState("");
   const debouncedMontant = useDebounced(montantText, 200);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
@@ -80,13 +82,15 @@ export function OperationsPage() {
         include_no_category: filters.uncategorizedOnly,
         montant_op: montantCents !== null ? montantOp : null,
         montant_value_cents: montantCents,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
         limit: FETCH_LIMIT,
       });
       setOps(rows);
     } catch (e) {
       setError(formatError(e));
     }
-  }, [types, debouncedSearch, filters.uncategorizedOnly, montantOp, montantCents]);
+  }, [types, debouncedSearch, filters.uncategorizedOnly, montantOp, montantCents, dateFrom, dateTo]);
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
@@ -120,6 +124,22 @@ export function OperationsPage() {
 
   function setMontantOpAndClear(v: ">" | "<" | "==") {
     setMontantOp(v);
+    setSelected(new Set());
+  }
+
+  function setDateFromAndClear(v: string) {
+    setDateFrom(v);
+    setSelected(new Set());
+  }
+
+  function setDateToAndClear(v: string) {
+    setDateTo(v);
+    setSelected(new Set());
+  }
+
+  function clearDatesAndClear() {
+    setDateFrom("");
+    setDateTo("");
     setSelected(new Set());
   }
 
@@ -230,6 +250,34 @@ export function OperationsPage() {
           inputMode="decimal"
           className="w-32 h-8 tabular-nums"
         />
+        <span className="text-sm text-muted-foreground">{fr.operations.filterDateFrom}</span>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFromAndClear(e.target.value)}
+          placeholder={fr.operations.filterDateFrom}
+          className="w-36 h-8"
+        />
+        <span className="text-sm text-muted-foreground">–</span>
+        <span className="text-sm text-muted-foreground">{fr.operations.filterDateTo}</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateToAndClear(e.target.value)}
+          placeholder={fr.operations.filterDateTo}
+          className="w-36 h-8"
+        />
+        {(dateFrom || dateTo) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={clearDatesAndClear}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            aria-label="Effacer les filtres de date"
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-sm">

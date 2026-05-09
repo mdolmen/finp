@@ -49,6 +49,8 @@ export const fr = {
     montantOpGt: "Plus grand que",
     montantOpLt: "Plus petit que",
     montantOpEq: "Égal à",
+    filterDateFrom: "Du",
+    filterDateTo: "Au",
     filterSansCategorie: "Sans catégorie",
     filterDebits: "Débits",
     filterCredits: "Crédits",
