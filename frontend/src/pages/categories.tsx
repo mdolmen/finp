@@ -20,7 +20,7 @@ import {
 import { categoriesApi, RpcError } from "@/lib/api";
 import type { Category } from "@/lib/api";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 export function CategoriesPage() {
   const [cats, setCats] = useState<Category[] | null>(null);
@@ -60,16 +60,16 @@ export function CategoriesPage() {
       <div className="flex items-center justify-end mb-5">
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="size-3.5" />
-          {fr.common.add}
+          {t.common.add}
         </Button>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {cats === null ? (
-        <p className="text-sm text-muted-foreground">{fr.common.loading}</p>
+        <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : cats.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.categories.empty}</p>
+        <p className="text-sm text-muted-foreground">{t.categories.empty}</p>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-md">
           {cats.map((cat) => (
@@ -110,10 +110,10 @@ export function CategoriesPage() {
         onOpenChange={(v) => !v && setDeleteConfirm(null)}
         title={
           deleteConfirm
-            ? fr.categories.confirmDelete.replace("{name}", deleteConfirm.name)
+            ? t.categories.confirmDelete.replace("{name}", deleteConfirm.name)
             : ""
         }
-        confirmLabel={fr.common.delete}
+        confirmLabel={t.common.delete}
         destructive
         onConfirm={() => deleteConfirm && performDelete(deleteConfirm)}
       />
@@ -150,7 +150,7 @@ function CategoryRow({
       {cat.is_builtin ? (
         <span
           className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-          title={fr.categories.builtinHint}
+          title={t.categories.builtinHint}
         >
           <Lock className="size-3" />
         </span>
@@ -166,10 +166,10 @@ function CategoryRow({
                 : "text-muted-foreground hover:text-foreground"
             }
             aria-label={
-              cat.is_recurring ? fr.categories.recurringOn : fr.categories.recurringOff
+              cat.is_recurring ? t.categories.recurringOn : t.categories.recurringOff
             }
             title={
-              cat.is_recurring ? fr.categories.recurringOn : fr.categories.recurringOff
+              cat.is_recurring ? t.categories.recurringOn : t.categories.recurringOff
             }
           >
             <Repeat className="size-3.5" />
@@ -179,7 +179,7 @@ function CategoryRow({
             variant="ghost"
             onClick={onEdit}
             className="text-muted-foreground hover:text-foreground"
-            aria-label={fr.common.edit}
+            aria-label={t.common.edit}
           >
             <Pencil className="size-3.5" />
           </Button>
@@ -188,7 +188,7 @@ function CategoryRow({
             variant="ghost"
             onClick={onDelete}
             className="text-muted-foreground hover:text-destructive"
-            aria-label={fr.common.delete}
+            aria-label={t.common.delete}
           >
             <Trash2 className="size-3.5" />
           </Button>
@@ -292,15 +292,15 @@ function AddCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{fr.categories.addTitle}</DialogTitle>
-          <DialogDescription>{fr.categories.addDescription}</DialogDescription>
+          <DialogTitle>{t.categories.addTitle}</DialogTitle>
+          <DialogDescription>{t.categories.addDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={fr.categories.namePlaceholder}
+            placeholder={t.categories.namePlaceholder}
             disabled={submitting}
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -311,10 +311,10 @@ function AddCategoryDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              {fr.common.cancel}
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={!name.trim() || submitting}>
-              {fr.common.add}
+              {t.common.add}
             </Button>
           </DialogFooter>
         </form>
@@ -358,16 +358,16 @@ function ReassignDialog({
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{fr.categories.reassignTitle}</DialogTitle>
-          <DialogDescription>{fr.categories.reassignBody}</DialogDescription>
+          <DialogTitle>{t.categories.reassignTitle}</DialogTitle>
+          <DialogDescription>{t.categories.reassignBody}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Select value={target} onValueChange={setTarget}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={fr.categories.reassignSelect} />
+              <SelectValue placeholder={t.categories.reassignSelect} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE_VALUE}>{fr.categories.reassignNone}</SelectItem>
+              <SelectItem value={NONE_VALUE}>{t.categories.reassignNone}</SelectItem>
               {others.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.name}
@@ -379,10 +379,10 @@ function ReassignDialog({
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-            {fr.common.cancel}
+            {t.common.cancel}
           </Button>
           <Button onClick={handleConfirm} disabled={submitting}>
-            {fr.categories.reassignConfirm}
+            {t.categories.reassignConfirm}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -392,7 +392,7 @@ function ReassignDialog({
 
 function formatError(e: unknown): string {
   if (e instanceof RpcError) {
-    if (e.appCode === "conflict") return fr.categories.errorDuplicate;
+    if (e.appCode === "conflict") return t.categories.errorDuplicate;
     return e.message;
   }
   return String(e);

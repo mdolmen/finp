@@ -31,3 +31,18 @@ export function formatDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return DATE.format(d);
 }
+
+const MONTH = new Intl.DateTimeFormat("fr-FR", {
+  month: "short",
+  year: "2-digit",
+});
+
+/** Accepts "YYYY-MM" and returns e.g. "janv. 25" (fr-FR) or "Jan 25" (en). */
+export function formatMonth(ym: string): string {
+  const [y, m] = ym.split("-");
+  const idx = parseInt(m, 10) - 1;
+  if (idx < 0 || Number.isNaN(idx)) return ym;
+  // Month is 1-based; construct a date in UTC to avoid timezone shifts.
+  const d = new Date(Date.UTC(parseInt(y, 10), idx, 1));
+  return MONTH.format(d);
+}

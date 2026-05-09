@@ -7,15 +7,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 export function ConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirmLabel = fr.common.confirm,
-  cancelLabel = fr.common.cancel,
+  confirmLabel = t.common.confirm,
+  cancelLabel = t.common.cancel,
   destructive = false,
   onConfirm,
 }: {

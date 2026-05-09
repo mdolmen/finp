@@ -16,7 +16,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { accountsApi, RpcError } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { formatEuros as formatEurosFromCents } from "@/lib/format";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 const DATE_TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
@@ -27,10 +27,10 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
 });
 
 function formatLastImport(iso: string | null): string {
-  if (!iso) return fr.comptes.neverImported;
+  if (!iso) return t.comptes.neverImported;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return fr.comptes.lastImport.replace("{date}", DATE_TIME_FMT.format(d));
+  return t.comptes.lastImport.replace("{date}", DATE_TIME_FMT.format(d));
 }
 
 export function ComptesPage() {
@@ -67,16 +67,16 @@ export function ComptesPage() {
       <div className="flex items-center justify-end mb-5">
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="size-3.5" />
-          {fr.common.add}
+          {t.common.add}
         </Button>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {accounts === null ? (
-        <p className="text-sm text-muted-foreground">{fr.common.loading}</p>
+        <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : accounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.comptes.empty}</p>
+        <p className="text-sm text-muted-foreground">{t.comptes.empty}</p>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-md">
           {accounts.map((acc) => (
@@ -89,7 +89,7 @@ export function ComptesPage() {
                 className={`text-sm tabular-nums ${
                   acc.current_balance_cents < 0 ? "text-debit" : "text-credit"
                 }`}
-                title={fr.comptes.currentBalance}
+                title={t.comptes.currentBalance}
               >
                 {formatEurosFromCents(acc.current_balance_cents)}
               </span>
@@ -100,23 +100,23 @@ export function ComptesPage() {
                 size="sm"
                 variant="ghost"
                 disabled
-                title={fr.comptes.connectSoon}
+                title={t.comptes.connectSoon}
                 className="text-muted-foreground"
               >
                 <Wifi className="size-3.5" />
-                {fr.comptes.connect}
+                {t.comptes.connect}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
-                {fr.comptes.import}
+                {t.comptes.import}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setSettingsFor(acc)}
                 className="text-muted-foreground hover:text-foreground"
-                aria-label={fr.comptes.settings}
-                title={fr.comptes.settings}
+                aria-label={t.comptes.settings}
+                title={t.comptes.settings}
               >
                 <Settings className="size-3.5" />
               </Button>
@@ -164,11 +164,11 @@ export function ComptesPage() {
         onOpenChange={(v) => !v && setDeleteConfirm(null)}
         title={
           deleteConfirm
-            ? fr.comptes.confirmDelete.replace("{name}", deleteConfirm.name)
+            ? t.comptes.confirmDelete.replace("{name}", deleteConfirm.name)
             : ""
         }
-        description={fr.comptes.confirmDeleteBody}
-        confirmLabel={fr.common.delete}
+        description={t.comptes.confirmDeleteBody}
+        confirmLabel={t.common.delete}
         destructive
         onConfirm={() => deleteConfirm && performDelete(deleteConfirm)}
       />
@@ -217,15 +217,15 @@ function AddAccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{fr.comptes.addTitle}</DialogTitle>
-          <DialogDescription>{fr.comptes.addDescription}</DialogDescription>
+          <DialogTitle>{t.comptes.addTitle}</DialogTitle>
+          <DialogDescription>{t.comptes.addDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={fr.comptes.namePlaceholder}
+            placeholder={t.comptes.namePlaceholder}
             disabled={submitting}
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -236,10 +236,10 @@ function AddAccountDialog({
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              {fr.common.cancel}
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={!name.trim() || submitting}>
-              {fr.common.add}
+              {t.common.add}
             </Button>
           </DialogFooter>
         </form>
@@ -293,14 +293,14 @@ function AccountSettingsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {fr.comptes.settingsTitle.replace("{name}", account.name)}
+            {t.comptes.settingsTitle.replace("{name}", account.name)}
           </DialogTitle>
-          <DialogDescription>{fr.comptes.settingsDescription}</DialogDescription>
+          <DialogDescription>{t.comptes.settingsDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">{fr.comptes.fieldInitialBalance}</Label>
+              <Label className="text-xs">{t.comptes.fieldInitialBalance}</Label>
               <Input
                 value={balanceText}
                 onChange={(e) => setBalanceText(e.target.value)}
@@ -311,7 +311,7 @@ function AccountSettingsDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{fr.comptes.fieldInitialBalanceDate}</Label>
+              <Label className="text-xs">{t.comptes.fieldInitialBalanceDate}</Label>
               <Input
                 type="date"
                 value={date}
@@ -321,15 +321,15 @@ function AccountSettingsDialog({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            {fr.comptes.initialBalanceHint}
+            {t.comptes.initialBalanceHint}
           </p>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-              {fr.common.cancel}
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={!valid || submitting}>
-              {fr.comptes.save}
+              {t.comptes.save}
             </Button>
           </DialogFooter>
         </form>
@@ -348,7 +348,7 @@ function parseEurosToCents(input: string): number | null {
 
 function formatError(e: unknown): string {
   if (e instanceof RpcError) {
-    if (e.appCode === "conflict") return fr.comptes.errorDuplicate;
+    if (e.appCode === "conflict") return t.comptes.errorDuplicate;
     return e.message;
   }
   return String(e);

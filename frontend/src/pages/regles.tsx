@@ -38,7 +38,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { categoriesApi, rulesApi, RpcError } from "@/lib/api";
 import type { Category, Predicate, Rule } from "@/lib/api";
 import { formatEuros } from "@/lib/format";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 export function ReglesPage() {
   const [rules, setRules] = useState<Rule[] | null>(null);
@@ -68,7 +68,7 @@ export function ReglesPage() {
     setInfo(null);
     try {
       const r = await rulesApi.applyNow();
-      setInfo(fr.regles.appliedNow.replace("{n}", String(r.assigned)));
+      setInfo(t.regles.appliedNow.replace("{n}", String(r.assigned)));
     } catch (e) {
       setError(formatError(e));
     }
@@ -90,7 +90,7 @@ export function ReglesPage() {
     try {
       const r = await rulesApi.run(rule.id);
       setInfo(
-        fr.regles.ranRule.replace("{name}", rule.name).replace("{n}", String(r.assigned)),
+        t.regles.ranRule.replace("{name}", rule.name).replace("{n}", String(r.assigned)),
       );
     } catch (e) {
       setError(formatError(e));
@@ -138,11 +138,11 @@ export function ReglesPage() {
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={handleApplyNow}>
             <Sparkles className="size-3.5" />
-            {fr.regles.applyNow}
+            {t.regles.applyNow}
           </Button>
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="size-3.5" />
-            {fr.common.add}
+            {t.common.add}
           </Button>
         </div>
       </div>
@@ -151,9 +151,9 @@ export function ReglesPage() {
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
 
       {rules === null ? (
-        <p className="text-sm text-muted-foreground">{fr.common.loading}</p>
+        <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : rules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{fr.regles.empty}</p>
+        <p className="text-sm text-muted-foreground">{t.regles.empty}</p>
       ) : (
         <div className="space-y-5">
           {groups.map(({ category, rules: groupRules }) => (
@@ -191,9 +191,9 @@ export function ReglesPage() {
         open={deleting !== null}
         onOpenChange={(v) => !v && setDeleting(null)}
         title={
-          deleting ? fr.regles.confirmDelete.replace("{name}", deleting.name) : ""
+          deleting ? t.regles.confirmDelete.replace("{name}", deleting.name) : ""
         }
-        confirmLabel={fr.common.delete}
+        confirmLabel={t.common.delete}
         destructive
         onConfirm={handleConfirmDelete}
       />
@@ -296,7 +296,7 @@ function SortableRuleRow({
       <Checkbox
         checked={rule.enabled}
         onCheckedChange={(v) => onToggle(v === true)}
-        aria-label={fr.regles.enabled}
+        aria-label={t.regles.enabled}
       />
       <div className="flex-1 min-w-0">
         <div className={rule.enabled ? "font-medium" : "font-medium text-muted-foreground"}>
@@ -312,8 +312,8 @@ function SortableRuleRow({
         onClick={onRun}
         disabled={!rule.enabled}
         className="text-muted-foreground hover:text-foreground"
-        aria-label={fr.regles.runRule}
-        title={fr.regles.runRule}
+        aria-label={t.regles.runRule}
+        title={t.regles.runRule}
       >
         <Play className="size-3.5" />
       </Button>
@@ -322,7 +322,7 @@ function SortableRuleRow({
         variant="ghost"
         onClick={onEdit}
         className="text-muted-foreground hover:text-foreground"
-        aria-label={fr.common.edit}
+        aria-label={t.common.edit}
       >
         <Pencil className="size-3.5" />
       </Button>
@@ -331,7 +331,7 @@ function SortableRuleRow({
         variant="ghost"
         onClick={onDelete}
         className="text-muted-foreground hover:text-destructive"
-        aria-label={fr.common.delete}
+        aria-label={t.common.delete}
       >
         <Trash2 className="size-3.5" />
       </Button>
@@ -420,25 +420,25 @@ function RuleFormDialog({
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? fr.regles.editTitle : fr.regles.addTitle}</DialogTitle>
+          <DialogTitle>{isEdit ? t.regles.editTitle : t.regles.addTitle}</DialogTitle>
           <DialogDescription>
-            {fr.regles.predicateLibelleHint}
+            {t.regles.predicateLibelleHint}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">{fr.regles.fieldName}</Label>
+            <Label className="text-xs">{t.regles.fieldName}</Label>
             <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={fr.regles.namePlaceholder}
+              placeholder={t.regles.namePlaceholder}
               disabled={submitting}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">{fr.regles.fieldCategory}</Label>
+            <Label className="text-xs">{t.regles.fieldCategory}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -454,7 +454,7 @@ function RuleFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">{fr.regles.fieldPredicate}</Label>
+            <Label className="text-xs">{t.regles.fieldPredicate}</Label>
             <div className="flex gap-2">
               <Select value={kind} onValueChange={(v) => setKind(v as PredicateKind)}>
                 <SelectTrigger className="w-44">
@@ -462,10 +462,10 @@ function RuleFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="libelle_contains">
-                    {fr.regles.predicateLibelleContains}
+                    {t.regles.predicateLibelleContains}
                   </SelectItem>
                   <SelectItem value="montant_compare">
-                    {fr.regles.predicateMontantCompare}
+                    {t.regles.predicateMontantCompare}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -508,17 +508,17 @@ function RuleFormDialog({
               onCheckedChange={(v) => setEnabled(v === true)}
               disabled={submitting}
             />
-            <span>{fr.regles.enabled}</span>
+            <span>{t.regles.enabled}</span>
           </label>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-              {fr.common.cancel}
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={!valid || submitting}>
-              {isEdit ? fr.regles.save : fr.regles.create}
+              {isEdit ? t.regles.save : t.regles.create}
             </Button>
           </DialogFooter>
         </form>
@@ -529,9 +529,9 @@ function RuleFormDialog({
 
 function describePredicate(p: Predicate): string {
   if (p.kind === "libelle_contains") {
-    return fr.regles.predicateLibelleSummary.replace("{text}", p.text);
+    return t.regles.predicateLibelleSummary.replace("{text}", p.text);
   }
-  return fr.regles.predicateMontantSummary
+  return t.regles.predicateMontantSummary
     .replace("{op}", p.operator === "==" ? "=" : p.operator)
     .replace("{amount}", formatEuros(p.value_cents));
 }

@@ -1,18 +1,18 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 type Item = { to: string; label: string };
 
 const primary: Item[] = [
-  { to: "/bilan", label: fr.nav.bilan },
-  { to: "/operations", label: fr.nav.operations },
+  { to: "/bilan", label: t.nav.bilan },
+  { to: "/operations", label: t.nav.operations },
 ];
 
 const secondary: Item[] = [
-  { to: "/categories", label: fr.nav.categories },
-  { to: "/regles", label: fr.nav.regles },
-  { to: "/comptes", label: fr.nav.comptes },
+  { to: "/categories", label: t.nav.categories },
+  { to: "/regles", label: t.nav.regles },
+  { to: "/comptes", label: t.nav.comptes },
 ];
 
 function NavItem({ to, label }: Item) {

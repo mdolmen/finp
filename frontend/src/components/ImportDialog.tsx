@@ -29,7 +29,7 @@ import type {
   MontantMode,
   RawRow,
 } from "@/lib/csv";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 
 type Step =
   | { kind: "pick" }
@@ -177,8 +177,8 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>{fr.import.title.replace("{name}", account.name)}</DialogTitle>
-          <DialogDescription>{fr.import.description}</DialogDescription>
+          <DialogTitle>{t.import.title.replace("{name}", account.name)}</DialogTitle>
+          <DialogDescription>{t.import.description}</DialogDescription>
         </DialogHeader>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -238,7 +238,7 @@ function PickStep({ onFile }: { onFile: (f: File) => void }) {
   return (
     <label className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-border rounded-md cursor-pointer hover:bg-accent/40">
       <Upload className="size-5 text-muted-foreground" />
-      <span className="text-sm">{fr.import.pickFile}</span>
+      <span className="text-sm">{t.import.pickFile}</span>
       <input
         type="file"
         accept=".csv,text/csv"
@@ -391,9 +391,9 @@ function MappingStep({
   return (
     <div className="space-y-4 min-w-0">
       <p className="text-xs text-muted-foreground">
-        {fr.import.fileLabel}: <span className="font-mono">{filename}</span>
+        {t.import.fileLabel}: <span className="font-mono">{filename}</span>
         {" · "}
-        {parsed.rows.length} {fr.import.rowsCount}
+        {parsed.rows.length} {t.import.rowsCount}
         {parsed.errors.length > 0 && (
           <>
             {" · "}
@@ -406,44 +406,44 @@ function MappingStep({
 
       <div className="grid grid-cols-2 gap-3">
         <SelectField
-          label={fr.import.fieldCharset}
+          label={t.import.fieldCharset}
           value={charset}
           options={CHARSET_OPTIONS}
           onChange={(v) => setCharset(v as Charset)}
         />
         <SelectField
-          label={fr.import.fieldDelimiter}
+          label={t.import.fieldDelimiter}
           value={delimiter}
           options={DELIMITER_OPTIONS}
           onChange={(v) => setDelimiter(v as "," | ";")}
         />
         <ColumnPicker
-          label={fr.import.fieldDate}
+          label={t.import.fieldDate}
           value={dateColumn}
           columns={parsed.columns}
           onChange={setDateColumn}
         />
         <SelectField
-          label={fr.import.fieldDateFormat}
+          label={t.import.fieldDateFormat}
           value={dateFormat}
           options={DATE_FORMATS}
           onChange={(v) => setDateFormat(v as DateFormat)}
         />
         <SelectField
-          label={fr.import.fieldMontantMode}
+          label={t.import.fieldMontantMode}
           value={montantMode}
           options={MONTANT_MODE_OPTIONS}
           onChange={(v) => setMontantMode(v as MontantMode)}
         />
         <SelectField
-          label={fr.import.fieldDecimal}
+          label={t.import.fieldDecimal}
           value={decimal}
           options={DECIMAL_OPTIONS}
           onChange={(v) => setDecimal(v as DecimalSeparator)}
         />
         {montantMode === "single" ? (
           <ColumnPicker
-            label={fr.import.fieldMontant}
+            label={t.import.fieldMontant}
             value={montantColumn}
             columns={parsed.columns}
             onChange={setMontantColumn}
@@ -451,13 +451,13 @@ function MappingStep({
         ) : (
           <>
             <ColumnPicker
-              label={fr.import.fieldDebit}
+              label={t.import.fieldDebit}
               value={debitColumn}
               columns={parsed.columns}
               onChange={setDebitColumn}
             />
             <ColumnPicker
-              label={fr.import.fieldCredit}
+              label={t.import.fieldCredit}
               value={creditColumn}
               columns={parsed.columns}
               onChange={setCreditColumn}
@@ -465,7 +465,7 @@ function MappingStep({
           </>
         )}
         <ColumnPicker
-          label={fr.import.fieldLibelle}
+          label={t.import.fieldLibelle}
           value={libelleColumn}
           columns={parsed.columns}
           onChange={setLibelleColumn}
@@ -474,7 +474,7 @@ function MappingStep({
 
       <div className="border border-border rounded-md overflow-hidden">
         <div className="text-xs text-muted-foreground px-3 py-1.5 bg-muted/40 border-b border-border">
-          {fr.import.preview}
+          {t.import.preview}
         </div>
         <div className="overflow-x-auto max-w-full">
           <table className="text-xs">
@@ -512,10 +512,10 @@ function MappingStep({
 
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
-          {fr.common.cancel}
+          {t.common.cancel}
         </Button>
         <Button type="button" onClick={submit} disabled={!valid || submitting}>
-          {fr.import.validate}
+          {t.import.validate}
         </Button>
       </DialogFooter>
     </div>
@@ -539,20 +539,20 @@ function DoneStep({
     <div className="space-y-3">
       <ul className="text-sm space-y-1">
         <li>
-          <span className="text-muted-foreground">{fr.import.imported}</span>{" "}
+          <span className="text-muted-foreground">{t.import.imported}</span>{" "}
           <span className="font-semibold">{result.imported}</span>
         </li>
         <li>
-          <span className="text-muted-foreground">{fr.import.skipped}</span>{" "}
+          <span className="text-muted-foreground">{t.import.skipped}</span>{" "}
           <span className="font-semibold">{result.skipped}</span>
         </li>
         {failed > 0 && (
           <li className="text-destructive">
-            {fr.import.failed}: <span className="font-semibold">{failed}</span>
+            {t.import.failed}: <span className="font-semibold">{failed}</span>
           </li>
         )}
         <li>
-          <span className="text-muted-foreground">{fr.import.ruleAssigned}</span>{" "}
+          <span className="text-muted-foreground">{t.import.ruleAssigned}</span>{" "}
           <span className="font-semibold">{result.rule_assigned}</span>
         </li>
       </ul>
@@ -566,7 +566,7 @@ function DoneStep({
       {(result.skipped_existing ?? []).length > 0 && (
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
-            {fr.import.skippedExistingHeader}
+            {t.import.skippedExistingHeader}
           </p>
           <div className="border border-border rounded-md overflow-hidden">
             <div className="overflow-x-auto max-w-full">
@@ -605,10 +605,10 @@ function DoneStep({
       <DialogFooter>
         {failed > 0 && (
           <Button type="button" variant="ghost" onClick={onBack}>
-            {fr.common.back}
+            {t.common.back}
           </Button>
         )}
-        <Button onClick={onClose}>{fr.common.close}</Button>
+        <Button onClick={onClose}>{t.common.close}</Button>
       </DialogFooter>
     </div>
   );
@@ -646,17 +646,17 @@ function PreviewStep({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        {fr.import.fileLabel}: <span className="font-mono">{filename}</span>
+        {t.import.fileLabel}: <span className="font-mono">{filename}</span>
       </p>
       <div className="text-sm">
         <p>
           <span className="font-semibold">{validCount}</span>{" "}
-          <span className="text-muted-foreground">{fr.import.confirmCount}</span>
+          <span className="text-muted-foreground">{t.import.confirmCount}</span>
         </p>
         {failedTotal > 0 && (
           <p className="mt-1 text-destructive">
             <span className="font-semibold">{failedTotal}</span>{" "}
-            {fr.import.confirmFailedHeader}
+            {t.import.confirmFailedHeader}
           </p>
         )}
       </div>
@@ -670,10 +670,10 @@ function PreviewStep({
       {error && <p className="text-sm text-destructive">{error}</p>}
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={onBack} disabled={submitting}>
-          {fr.common.back}
+          {t.common.back}
         </Button>
         <Button type="button" onClick={handleConfirm} disabled={submitting}>
-          {submitting ? fr.common.loading : fr.import.run}
+          {submitting ? t.common.loading : t.import.run}
         </Button>
       </DialogFooter>
     </div>

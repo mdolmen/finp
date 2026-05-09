@@ -21,7 +21,7 @@ import {
 import type { Category, Operation, OperationType } from "@/lib/api";
 import { formatDate, formatEuros } from "@/lib/format";
 import { useDebounced } from "@/lib/useDebounced";
-import { fr } from "@/i18n/fr";
+import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const NO_CATEGORY = "__none__";
@@ -201,7 +201,7 @@ export function OperationsPage() {
     setInfo(null);
     try {
       const r = await rulesApi.applyNow();
-      setInfo(fr.operations.appliedRules.replace("{n}", String(r.assigned)));
+      setInfo(t.operations.appliedRules.replace("{n}", String(r.assigned)));
       await refresh();
     } catch (e) {
       setError(formatError(e));
@@ -213,7 +213,7 @@ export function OperationsPage() {
       <div className="flex items-center justify-end mb-4">
         <Button size="sm" variant="outline" onClick={handleApplyRules}>
           <Sparkles className="size-3.5" />
-          {fr.operations.applyRules}
+          {t.operations.applyRules}
         </Button>
       </div>
 
@@ -221,7 +221,7 @@ export function OperationsPage() {
         <Input
           value={search}
           onChange={(e) => setSearchAndClear(e.target.value)}
-          placeholder={fr.operations.searchPlaceholder}
+          placeholder={t.operations.searchPlaceholder}
           className="max-w-sm h-8"
         />
         <Select
@@ -232,13 +232,13 @@ export function OperationsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=">" title={fr.operations.montantOpGt}>
+            <SelectItem value=">" title={t.operations.montantOpGt}>
               {">"}
             </SelectItem>
-            <SelectItem value="<" title={fr.operations.montantOpLt}>
+            <SelectItem value="<" title={t.operations.montantOpLt}>
               {"<"}
             </SelectItem>
-            <SelectItem value="==" title={fr.operations.montantOpEq}>
+            <SelectItem value="==" title={t.operations.montantOpEq}>
               {"="}
             </SelectItem>
           </SelectContent>
@@ -246,25 +246,25 @@ export function OperationsPage() {
         <Input
           value={montantText}
           onChange={(e) => setMontantTextAndClear(e.target.value)}
-          placeholder={fr.operations.montantPlaceholder}
+          placeholder={t.operations.montantPlaceholder}
           inputMode="decimal"
           className="w-32 h-8 tabular-nums"
         />
-        <span className="text-sm text-muted-foreground">{fr.operations.filterDateFrom}</span>
+        <span className="text-sm text-muted-foreground">{t.operations.filterDateFrom}</span>
         <Input
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFromAndClear(e.target.value)}
-          placeholder={fr.operations.filterDateFrom}
+          placeholder={t.operations.filterDateFrom}
           className="w-36 h-8"
         />
         <span className="text-sm text-muted-foreground">–</span>
-        <span className="text-sm text-muted-foreground">{fr.operations.filterDateTo}</span>
+        <span className="text-sm text-muted-foreground">{t.operations.filterDateTo}</span>
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => setDateToAndClear(e.target.value)}
-          placeholder={fr.operations.filterDateTo}
+          placeholder={t.operations.filterDateTo}
           className="w-36 h-8"
         />
         {(dateFrom || dateTo) && (
@@ -282,22 +282,22 @@ export function OperationsPage() {
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-sm">
         <FilterCheckbox
-          label={fr.operations.filterSansCategorie}
+          label={t.operations.filterSansCategorie}
           checked={filters.uncategorizedOnly}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, uncategorizedOnly: v }))}
         />
         <FilterCheckbox
-          label={fr.operations.filterDebits}
+          label={t.operations.filterDebits}
           checked={filters.debit}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, debit: v }))}
         />
         <FilterCheckbox
-          label={fr.operations.filterCredits}
+          label={t.operations.filterCredits}
           checked={filters.credit}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, credit: v }))}
         />
         <FilterCheckbox
-          label={fr.operations.filterInternal}
+          label={t.operations.filterInternal}
           checked={filters.internal}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, internal: v }))}
         />
@@ -308,7 +308,7 @@ export function OperationsPage() {
 
       {ops !== null && (
         <div className="flex justify-end mb-1.5 px-1 text-xs text-muted-foreground tabular-nums">
-          {fr.operations.count.replace("{n}", String(ops.length))}
+          {t.operations.count.replace("{n}", String(ops.length))}
         </div>
       )}
 
@@ -349,12 +349,12 @@ function BulkBar({
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 bg-popover border border-border rounded-md shadow-lg text-sm">
       <span className="text-muted-foreground pr-1">
-        {fr.operations.selectedCount.replace("{n}", String(count))}
+        {t.operations.selectedCount.replace("{n}", String(count))}
       </span>
       <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
           <Button size="sm" variant="outline">
-            {fr.operations.bulkAssign}
+            {t.operations.bulkAssign}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-1" align="center">
@@ -377,14 +377,14 @@ function BulkBar({
         </PopoverContent>
       </Popover>
       <Button size="sm" variant="ghost" onClick={() => onAssign(null)}>
-        {fr.operations.bulkClear}
+        {t.operations.bulkClear}
       </Button>
       <Button
         size="sm"
         variant="ghost"
         onClick={onDeselect}
         className="text-muted-foreground"
-        aria-label={fr.operations.bulkDeselect}
+        aria-label={t.operations.bulkDeselect}
       >
         <X className="size-3.5" />
       </Button>
@@ -429,10 +429,10 @@ function OperationsList({
   bottomBarVisible: boolean;
 }) {
   if (ops === null) {
-    return <p className="text-sm text-muted-foreground">{fr.common.loading}</p>;
+    return <p className="text-sm text-muted-foreground">{t.common.loading}</p>;
   }
   if (ops.length === 0) {
-    return <p className="text-sm text-muted-foreground">{fr.operations.empty}</p>;
+    return <p className="text-sm text-muted-foreground">{t.operations.empty}</p>;
   }
 
   const allSelected = ops.length > 0 && ops.every((o) => selected.has(o.id));
@@ -456,12 +456,12 @@ function OperationsList({
           <Checkbox
             checked={allSelected ? true : someSelected ? "indeterminate" : false}
             onCheckedChange={(v) => onToggleSelectAll(v === true)}
-            aria-label={fr.operations.selectAll}
+            aria-label={t.operations.selectAll}
           />
-          <div>{fr.operations.columnDate}</div>
-          <div className="text-right">{fr.operations.columnMontant}</div>
-          <div>{fr.operations.columnLibelle}</div>
-          <div>{fr.operations.columnCategory}</div>
+          <div>{t.operations.columnDate}</div>
+          <div className="text-right">{t.operations.columnMontant}</div>
+          <div>{t.operations.columnLibelle}</div>
+          <div>{t.operations.columnCategory}</div>
         </div>
       }
     />
@@ -584,7 +584,7 @@ function OperationRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_CATEGORY}>{fr.operations.categoryNone}</SelectItem>
+            <SelectItem value={NO_CATEGORY}>{t.operations.categoryNone}</SelectItem>
             {cats.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}

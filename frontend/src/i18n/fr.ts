@@ -1,7 +1,6 @@
 // Single source of truth for UI strings. Plain object — no runtime t() helper
 // until we actually add a second locale. Imports look like:
-//   import { fr } from "@/i18n/fr";
-//   <h1>{fr.bilan.title}</h1>
+//   import { t } from "@/i18n";
 
 export const fr = {
   app: {
@@ -183,5 +182,20 @@ export const fr = {
       "Opérations déjà présentes (rejetées comme doublons) :",
     failed: "Lignes en erreur",
     ruleAssigned: "Règles appliquées :",
+  },
+  emptyState: {
+    bilan: "Créez un compte pour commencer",
+    operations: "Créez un compte pour commencer",
+    createAccount: "Créer un compte",
+  },
+  errorBoundary: {
+    title: "Quelque chose s'est mal passé",
+    body: "Une erreur inattendue est survenue. Veuillez recharger l'application.",
+    reload: "Recharger",
+  },
+  language: {
+    label: "Langue",
+    fr: "Français",
+    en: "English",
   },
 } as const;
