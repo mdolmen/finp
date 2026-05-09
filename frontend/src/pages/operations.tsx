@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  accountsApi,
   categoriesApi,
   operationsApi,
   rulesApi,
   RpcError,
 } from "@/lib/api";
-import type { Category, Operation, OperationType } from "@/lib/api";
+import type { Account, Category, Operation, OperationType } from "@/lib/api";
 import { formatDate, formatEuros } from "@/lib/format";
 import { useDebounced } from "@/lib/useDebounced";
 import { t } from "@/i18n";
@@ -53,6 +55,7 @@ export function OperationsPage() {
 
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -94,6 +97,7 @@ export function OperationsPage() {
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
+    accountsApi.list().then(setAccounts).catch((e) => setError(formatError(e)));
   }, []);
 
   useEffect(() => {
@@ -206,6 +210,20 @@ export function OperationsPage() {
     } catch (e) {
       setError(formatError(e));
     }
+  }
+
+  if (accounts !== null && accounts.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+        <p className="text-sm text-muted-foreground">{t.emptyState.operations}</p>
+        <Link
+          to="/comptes"
+          className="text-sm font-medium underline underline-offset-4 hover:text-foreground text-muted-foreground"
+        >
+          {t.emptyState.createAccount}
+        </Link>
+      </div>
+    );
   }
 
   return (

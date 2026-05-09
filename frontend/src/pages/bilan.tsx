@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import {
   Bar,
@@ -137,6 +138,20 @@ export function BilanPage() {
       .then(setSummary)
       .catch((e) => setError(formatError(e)));
   }, [accountIds, debitIds, creditIds, options, monthOffset]);
+
+  if (accountsList.length === 0 && options !== null) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+        <p className="text-sm text-muted-foreground">{t.emptyState.bilan}</p>
+        <Link
+          to="/comptes"
+          className="text-sm font-medium underline underline-offset-4 hover:text-foreground text-muted-foreground"
+        >
+          {t.emptyState.createAccount}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="px-6 py-5">
