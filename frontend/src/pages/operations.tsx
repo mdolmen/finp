@@ -56,6 +56,7 @@ export function OperationsPage() {
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -103,6 +104,17 @@ export function OperationsPage() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "f" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Drop selection whenever the visible row set changes — selecting rows you
   // can't see anymore would be confusing.
@@ -237,6 +249,7 @@ export function OperationsPage() {
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <Input
+          ref={searchRef}
           value={search}
           onChange={(e) => setSearchAndClear(e.target.value)}
           placeholder={t.operations.searchPlaceholder}
