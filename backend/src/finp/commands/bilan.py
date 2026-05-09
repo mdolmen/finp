@@ -178,8 +178,10 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
 
     # Recurring categories: project the most recent realized monthly amount
     # of each is_recurring=true category onto window months strictly AFTER
-    # today's month. Past + current months keep their realized values.
-    current_month = today.strftime("%Y-%m")
+    # the real current month. ``today`` is just the window anchor (shifts
+    # with the chevrons), so we read the system clock here so projection
+    # behaves consistently regardless of how far the user has scrolled.
+    current_month = date.today().strftime("%Y-%m")
     future_months = [m for m in months if m > current_month]
     if future_months:
         recurring_rows = conn.execute(
