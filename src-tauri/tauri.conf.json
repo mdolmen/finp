@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "finp",
+  "productName": "Finp",
   "version": "0.1.0",
   "identifier": "io.github.mathieudolmen.finp",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Finances Personnelles",
+        "title": "Finp",
         "width": 1280,
         "height": 850,
         "minWidth": 960,
