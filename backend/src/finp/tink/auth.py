@@ -85,7 +85,7 @@ def _store_tokens(conn: sqlite3.Connection, token_data: dict) -> str:
             refresh_token = excluded.refresh_token,
             expires_at    = excluded.expires_at
         """,
-        (tink_user_id, token_data["access_token"], token_data["refresh_token"], expires_at),
+        (tink_user_id, token_data["access_token"], token_data.get("refresh_token", ""), expires_at),
     )
     return tink_user_id
 
