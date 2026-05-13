@@ -78,14 +78,22 @@ def _store_tokens(conn: sqlite3.Connection, token_data: dict) -> str:
     ).isoformat()
     conn.execute(
         """
-        INSERT INTO tink_tokens (tink_user_id, access_token, refresh_token, expires_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO tink_tokens
+            (tink_user_id, access_token, refresh_token, expires_at, credentials_id)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (tink_user_id) DO UPDATE SET
-            access_token  = excluded.access_token,
-            refresh_token = excluded.refresh_token,
-            expires_at    = excluded.expires_at
+            access_token   = excluded.access_token,
+            refresh_token  = excluded.refresh_token,
+            expires_at     = excluded.expires_at,
+            credentials_id = excluded.credentials_id
         """,
-        (tink_user_id, token_data["access_token"], token_data.get("refresh_token", ""), expires_at),
+        (
+            tink_user_id,
+            token_data["access_token"],
+            token_data.get("refresh_token", ""),
+            expires_at,
+            token_data.get("credentials_id", ""),
+        ),
     )
     return tink_user_id
 
@@ -113,6 +121,10 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(parsed.query)
         code = (params.get("code") or [None])[0]
         state = (params.get("state") or [None])[0]
+        # Tink returns credentialsId (camelCase) and credentials_id (snake) — take either.
+        credentials_id = (
+            (params.get("credentialsId") or params.get("credentials_id") or [""])[0]
+        )
 
         with _sessions_lock:
             session = _sessions.get(state) if state else None
@@ -131,7 +143,7 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
                 session["redirect_uri"],
             )
             conn = connect(_db_path())
-            tink_user_id = _store_tokens(conn, token_data)
+            tink_user_id = _store_tokens(conn, {**token_data, "credentials_id": credentials_id})
             conn.close()
             self._respond(200, _success_html())
             self._finish_session(state, tink_user_id=tink_user_id)
