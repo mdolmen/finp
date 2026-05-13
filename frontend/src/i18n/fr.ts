@@ -206,6 +206,7 @@ export const fr = {
     connectingBrowser: "Navigateur ouvert…",
     connectPollError: "Échec de la connexion Tink.",
     connectSuccess: "Connecté à Tink.",
+    redirectUriLabel: "URI de redirection à enregistrer dans la console Tink",
   },
   language: {
     label: "Langue",

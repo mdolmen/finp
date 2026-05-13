@@ -202,6 +202,7 @@ export const en = {
     connectingBrowser: "Browser opened…",
     connectPollError: "Tink connection failed.",
     connectSuccess: "Connected to Tink.",
+    redirectUriLabel: "Redirect URI to register in the Tink console",
   },
   language: {
     label: "Language",

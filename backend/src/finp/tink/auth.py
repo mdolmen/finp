@@ -18,7 +18,6 @@ import http.server
 import json
 import os
 import secrets
-import socket
 import sqlite3
 import threading
 import urllib.parse
@@ -29,6 +28,11 @@ from finp.db import connect, default_db_path
 from finp.tink import client as tink_client
 
 LINK_BASE = "https://link.tink.com/1.0/authorize/"
+
+# Fixed port so the redirect URI can be pre-registered in the Tink developer console.
+# Register http://localhost:17890/callback there before using the OAuth flow.
+OAUTH_CALLBACK_PORT = 17890
+OAUTH_REDIRECT_URI = f"http://localhost:{OAUTH_CALLBACK_PORT}/callback"
 
 # In-flight OAuth sessions keyed by state token.
 _sessions: dict[str, dict[str, Any]] = {}
@@ -46,12 +50,6 @@ def authorization_url(client_id: str, redirect_uri: str, state: str, market: str
         "state": state,
     }
     return LINK_BASE + "?" + urllib.parse.urlencode(params)
-
-
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
 
 
 def _db_path() -> str:
@@ -169,13 +167,14 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
 
 
 def start_oauth_server(client_id: str, client_secret: str) -> tuple[str, str]:
-    """Start a local HTTP server and return ``(auth_url, state)``.
+    """Start a local HTTP server on ``OAUTH_CALLBACK_PORT`` and return ``(auth_url, state)``.
+
+    The redirect URI must be pre-registered in the Tink developer console:
+    ``http://localhost:17890/callback``
 
     The server shuts itself down after handling the first callback request.
     """
     state = secrets.token_urlsafe(16)
-    port = _free_port()
-    redirect_uri = f"http://localhost:{port}/callback"
 
     with _sessions_lock:
         _sessions[state] = {
@@ -184,13 +183,13 @@ def start_oauth_server(client_id: str, client_secret: str) -> tuple[str, str]:
             "error": None,
             "client_id": client_id,
             "client_secret": client_secret,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": OAUTH_REDIRECT_URI,
         }
 
-    server = http.server.HTTPServer(("127.0.0.1", port), _CallbackHandler)
+    server = http.server.HTTPServer(("127.0.0.1", OAUTH_CALLBACK_PORT), _CallbackHandler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
-    return authorization_url(client_id, redirect_uri, state), state
+    return authorization_url(client_id, OAUTH_REDIRECT_URI, state), state
 
 
 def get_oauth_status(state: str) -> dict[str, Any]:

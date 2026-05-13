@@ -327,6 +327,12 @@ function TinkSettingsDialog({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.tink.redirectUriLabel}</Label>
+            <code className="block rounded bg-muted px-2 py-1 text-xs select-all font-mono">
+              http://localhost:17890/callback
+            </code>
+          </div>
           {info && <p className="text-sm text-credit">{info}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
