@@ -52,6 +52,25 @@ impl RpcClient {
             .expect("src-tauri has a parent")
             .join("backend");
 
+        // macOS app bundles launch with a minimal PATH that omits ~/.local/bin
+        // and other user-level locations where uv is typically installed.
+        // Prepend the common locations so the sidecar can be found.
+        if let Some(home) = std::env::var_os("HOME") {
+            let extras = [
+                PathBuf::from(&home).join(".local/bin"),
+                PathBuf::from(&home).join(".cargo/bin"),
+                PathBuf::from("/opt/homebrew/bin"),
+                PathBuf::from("/usr/local/bin"),
+            ];
+            let current = std::env::var_os("PATH").unwrap_or_default();
+            let mut parts: Vec<std::ffi::OsString> = extras
+                .iter()
+                .map(|p| p.as_os_str().to_owned())
+                .collect();
+            parts.push(current);
+            std::env::set_var("PATH", parts.join(std::ffi::OsStr::new(":")));
+        }
+
         let mut child = Command::new("uv")
             .arg("run")
             .arg("--project")

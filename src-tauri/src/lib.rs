@@ -40,9 +40,7 @@ pub fn run() {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 match RpcClient::spawn().await {
-                    Ok(client) => {
-                        handle.manage(client);
-                    }
+                    Ok(client) => { handle.manage(client); }
                     Err(e) => log::error!("failed to spawn finp-rpc: {e:#}"),
                 }
             });
