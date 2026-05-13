@@ -49,11 +49,8 @@ export function ComptesPage() {
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
-  const [tinkReady, setTinkReady] = useState(false);
   const [tinkConnected, setTinkConnected] = useState(false);
-  const [connectingId, setConnectingId] = useState<number | null>(null);
   const [linkFor, setLinkFor] = useState<Account | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -64,7 +61,6 @@ export function ComptesPage() {
   }, []);
 
   const refreshTinkStatus = useCallback(() => {
-    tinkApi.getCredentials().then((c) => setTinkReady(c !== null)).catch(() => {});
     tinkApi.hasConnection().then((r) => setTinkConnected(r.connected)).catch(() => {});
   }, []);
 
@@ -72,39 +68,6 @@ export function ComptesPage() {
     refresh();
     refreshTinkStatus();
   }, [refresh, refreshTinkStatus]);
-
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
-
-  async function handleConnect(acc: Account) {
-    setConnectingId(acc.id);
-    setError(null);
-    try {
-      const { auth_url, state } = await tinkApi.startOAuth();
-      await openUrl(auth_url);
-
-      pollRef.current = setInterval(async () => {
-        try {
-          const result = await tinkApi.getOAuthStatus(state);
-          if (result.status === "pending") return;
-          if (pollRef.current) clearInterval(pollRef.current);
-          setConnectingId(null);
-          if (result.status === "complete") {
-            setTinkConnected(true);
-            setLinkFor(acc);
-          } else {
-            setError(result.error ?? t.tink.connectPollError);
-          }
-        } catch {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setConnectingId(null);
-          setError(t.tink.connectPollError);
-        }
-      }, 2000);
-    } catch (e) {
-      setConnectingId(null);
-      setError(formatError(e));
-    }
-  }
 
   async function performDelete(account: Account) {
     try {
@@ -123,7 +86,7 @@ export function ComptesPage() {
           variant="ghost"
           onClick={() => setTinkSettingsOpen(true)}
           title={t.tink.settingsTitle}
-          className="text-muted-foreground hover:text-foreground"
+          className={tinkConnected ? "text-credit hover:text-credit/80" : "text-muted-foreground hover:text-foreground"}
         >
           <Wifi className="size-3.5" />
           {t.tink.settingsTitle}
@@ -167,27 +130,17 @@ export function ComptesPage() {
                   <Wifi className="size-3.5" />
                   {t.tink.linked}
                 </span>
-              ) : tinkConnected ? (
+              ) : (
                 <Button
                   size="sm"
                   variant="ghost"
+                  disabled={!tinkConnected}
+                  title={tinkConnected ? undefined : t.tink.connectDisabledHint}
                   className="text-muted-foreground"
                   onClick={() => setLinkFor(acc)}
                 >
                   <Wifi className="size-3.5" />
                   {t.tink.link}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={!tinkReady || connectingId === acc.id}
-                  title={tinkReady ? t.comptes.connect : t.tink.connectDisabledHint}
-                  className="text-muted-foreground"
-                  onClick={() => handleConnect(acc)}
-                >
-                  <Wifi className="size-3.5" />
-                  {connectingId === acc.id ? t.tink.connectingBrowser : t.comptes.connect}
                 </Button>
               )}
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
@@ -220,6 +173,7 @@ export function ComptesPage() {
       <TinkSettingsDialog
         open={tinkSettingsOpen}
         onOpenChange={setTinkSettingsOpen}
+        onConnected={() => { setTinkSettingsOpen(false); refreshTinkStatus(); setError(null); }}
       />
 
       <AddAccountDialog
@@ -256,6 +210,11 @@ export function ComptesPage() {
             setLinkFor(null);
             await refresh();
           }}
+          onReauthRequired={() => {
+            setLinkFor(null);
+            setTinkConnected(false);
+            setError(t.tink.reauthRequired);
+          }}
         />
       )}
 
@@ -279,21 +238,27 @@ export function ComptesPage() {
 function TinkSettingsDialog({
   open,
   onOpenChange,
+  onConnected,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onConnected: () => void;
 }) {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [environment, setEnvironment] = useState<TinkEnvironment>("sandbox");
-  const [submitting, setSubmitting] = useState(false);
-  const [info, setInfo] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setInfo(null);
-    setError(null);
+    if (!open) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      setConnecting(false);
+      setError(null);
+      return;
+    }
     tinkApi.getCredentials().then((creds) => {
       if (creds) {
         setClientId(creds.client_id);
@@ -301,21 +266,42 @@ function TinkSettingsDialog({
         setEnvironment(creds.environment);
       }
     }).catch(() => {});
+    tinkApi.hasConnection().then((r) => setConnected(r.connected)).catch(() => {});
   }, [open]);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId.trim() || !clientSecret.trim()) return;
-    setSubmitting(true);
-    setInfo(null);
+    if (!clientId.trim() || !clientSecret.trim() || connecting) return;
     setError(null);
     try {
       await tinkApi.saveCredentials({ client_id: clientId.trim(), client_secret: clientSecret.trim(), environment });
-      setInfo(t.tink.credentialsSaved);
+      const { auth_url, state } = await tinkApi.startOAuth();
+      await openUrl(auth_url);
+      setConnecting(true);
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const result = await tinkApi.getOAuthStatus(state);
+          if (result.status === "pending") return;
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+          setConnecting(false);
+          if (result.status === "complete") {
+            setConnected(true);
+            onConnected();
+          } else {
+            setError(result.error ?? t.tink.connectPollError);
+          }
+        } catch {
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+          setConnecting(false);
+          setError(t.tink.connectPollError);
+        }
+      }, 2000);
     } catch (e) {
+      setConnecting(false);
       setError(e instanceof RpcError ? e.message : String(e));
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -324,6 +310,10 @@ function TinkSettingsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t.tink.settingsTitle}</DialogTitle>
+          <span className={`text-xs flex items-center gap-1.5 ${connected ? "text-credit" : "text-muted-foreground"}`}>
+            <span className={`inline-block size-1.5 rounded-full ${connected ? "bg-credit" : "bg-muted-foreground"}`} />
+            {connected ? t.tink.statusConnected : t.tink.statusDisconnected}
+          </span>
           <DialogDescription>{t.tink.settingsDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -333,7 +323,7 @@ function TinkSettingsDialog({
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               placeholder="your-client-id"
-              disabled={submitting}
+              disabled={connecting}
               autoComplete="off"
             />
           </div>
@@ -344,7 +334,7 @@ function TinkSettingsDialog({
               value={clientSecret}
               onChange={(e) => setClientSecret(e.target.value)}
               placeholder="••••••••"
-              disabled={submitting}
+              disabled={connecting}
               autoComplete="off"
             />
           </div>
@@ -353,7 +343,7 @@ function TinkSettingsDialog({
             <Select
               value={environment}
               onValueChange={(v) => setEnvironment(v as TinkEnvironment)}
-              disabled={submitting}
+              disabled={connecting}
             >
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
@@ -370,14 +360,13 @@ function TinkSettingsDialog({
               http://localhost:17890/callback
             </code>
           </div>
-          {info && <p className="text-sm text-credit">{info}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={connecting}>
               {t.common.cancel}
             </Button>
-            <Button type="submit" disabled={!clientId.trim() || !clientSecret.trim() || submitting}>
-              {t.comptes.save}
+            <Button type="submit" disabled={!clientId.trim() || !clientSecret.trim() || connecting}>
+              {connecting ? t.tink.connectingBrowser : t.comptes.connect}
             </Button>
           </DialogFooter>
         </form>
@@ -552,10 +541,12 @@ function LinkAccountDialog({
   account,
   onClose,
   onLinked,
+  onReauthRequired,
 }: {
   account: Account;
   onClose: () => void;
   onLinked: () => void;
+  onReauthRequired: () => void;
 }) {
   const [tinkAccounts, setTinkAccounts] = useState<import("@/lib/api").TinkAccount[] | null>(null);
   const [selected, setSelected] = useState<string>("");
@@ -569,8 +560,14 @@ function LinkAccountDialog({
         const pre = list.find((a) => a.id === account.tink_account_id);
         if (pre) setSelected(pre.id);
       })
-      .catch(() => setError(t.tink.linkError));
-  }, [account.tink_account_id]);
+      .catch((e) => {
+        if (e instanceof RpcError && (e.appCode === "tink.reauth_required" || e.appCode === "tink.no_tokens")) {
+          onReauthRequired();
+        } else {
+          setError(t.tink.linkError);
+        }
+      });
+  }, [account.tink_account_id, onReauthRequired]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

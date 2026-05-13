@@ -5,6 +5,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Literal
 
+import httpx
+
 from pydantic import BaseModel, Field
 
 from finp.accounts import Account
@@ -92,13 +94,29 @@ def _has_connection(conn: sqlite3.Connection, _: EmptyParams) -> HasConnectionOu
     return HasConnectionOut(connected=count > 0)
 
 
-def _list_tink_accounts(conn: sqlite3.Connection, _: EmptyParams) -> list[TinkAccountOut]:
-    row = conn.execute(
-        "SELECT access_token FROM tink_tokens ORDER BY rowid LIMIT 1"
+def _get_access_token(conn: sqlite3.Connection) -> str:
+    """Return a valid Tink access token, refreshing if needed."""
+    token_row = conn.execute(
+        "SELECT tink_user_id, access_token FROM tink_tokens ORDER BY rowid LIMIT 1"
     ).fetchone()
-    if row is None:
+    if token_row is None:
         raise AppError("tink.no_tokens", "No Tink connection found. Complete OAuth first.")
-    raw_accounts = tink_client.list_accounts(row["access_token"])
+    creds = credentials.get(conn)
+    if creds is None:
+        raise AppError("tink.no_credentials", "Tink credentials not configured.")
+    return tink_auth.refresh_token_if_needed(
+        conn, creds["client_id"], creds["client_secret"], token_row["tink_user_id"]
+    )
+
+
+def _list_tink_accounts(conn: sqlite3.Connection, _: EmptyParams) -> list[TinkAccountOut]:
+    access_token = _get_access_token(conn)
+    try:
+        raw_accounts = tink_client.list_accounts(access_token)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise AppError("tink.reauth_required", "Tink token rejected (401). Please reconnect via OAuth.") from exc
+        raise
     result = []
     for a in raw_accounts:
         iban = None

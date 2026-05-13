@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from finp.db import connect, default_db_path
+from finp.errors import AppError
 from finp.tink import client as tink_client
 
 LINK_BASE = "https://link.tink.com/1.0/authorize/"
@@ -231,6 +232,12 @@ def refresh_token_if_needed(
     expires_at = datetime.fromisoformat(row["expires_at"])
     if expires_at - datetime.now(UTC) > timedelta(minutes=5):
         return row["access_token"]
+
+    if not row["refresh_token"]:
+        raise AppError(
+            "tink.reauth_required",
+            "Tink token expired. Please reconnect via the OAuth flow.",
+        )
 
     token_data = tink_client.refresh_token(client_id, client_secret, row["refresh_token"])
     _store_tokens(conn, {**token_data, "tink_user_id": tink_user_id})

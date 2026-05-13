@@ -139,18 +139,18 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M11.1 — Credentials & schema
 
-- [ ] Migration: `tink_credentials(client_id, client_secret, environment CHECK('sandbox','production'))`; add `tink_account_id TEXT`, `tink_last_sync_at TEXT` to `accounts`; add `tink_tokens(tink_user_id, access_token, refresh_token, expires_at)`.
-- [ ] `finp.tink` module: `credentials.py` (read/write), `client.py` (httpx wrapper).
-- [ ] IPC commands: `tink.get_credentials`, `tink.save_credentials`.
-- [ ] Settings modal on Comptes (gear icon, app-wide): `client_id`, `client_secret`, sandbox/production toggle.
+- [x] Migration: `tink_credentials(client_id, client_secret, environment CHECK('sandbox','production'))`; add `tink_account_id TEXT`, `tink_last_sync_at TEXT` to `accounts`; add `tink_tokens(tink_user_id, access_token, refresh_token, expires_at)`.
+- [x] `finp.tink` module: `credentials.py` (read/write), `client.py` (httpx wrapper).
+- [x] IPC commands: `tink.get_credentials`, `tink.save_credentials`.
+- [x] Settings modal on Comptes (gear icon, app-wide): `client_id`, `client_secret`, sandbox/production toggle.
 
 ### M11.2 — OAuth flow
 
-- [ ] Tauri: `tauri-plugin-shell` to open browser; temporary local HTTP server (random port) to receive the OAuth redirect callback; forward full URL to Python via `tink.handle_oauth_callback(url)`.
-- [ ] Backend `finp.tink.auth`: `authorization_url(redirect_uri)` → Tink OAuth URL.
-- [ ] Backend `finp.tink.auth`: `exchange_code(code, state, redirect_uri)` → fetch tokens, store in `tink_tokens`.
-- [ ] Backend `finp.tink.auth`: `refresh_token_if_needed()` — called transparently before any API request.
-- [ ] Frontend: [Connecter] button opens browser → local server catches callback → calls `tink.handle_oauth_callback` → updates connection state per account.
+- [x] Tauri: `tauri-plugin-shell` to open browser; temporary local HTTP server (random port) to receive the OAuth redirect callback; forward full URL to Python via `tink.handle_oauth_callback(url)`.
+- [x] Backend `finp.tink.auth`: `authorization_url(redirect_uri)` → Tink OAuth URL.
+- [x] Backend `finp.tink.auth`: `exchange_code(code, state, redirect_uri)` → fetch tokens, store in `tink_tokens`.
+- [x] Backend `finp.tink.auth`: `refresh_token_if_needed()` — called transparently before any API request.
+- [x] Frontend: [Connecter] button opens browser → local server catches callback → calls `tink.handle_oauth_callback` → updates connection state per account.
 
 ### M11.3 — Account linking
 
