@@ -121,35 +121,63 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M9 — Polish pass
 
-- [ ] First-run experience: empty DB → friendly "Créez un compte pour commencer" on Bilan/Opérations.
-- [ ] Keyboard shortcuts: `⌘K` focus search on Opérations; `Esc` closes modals.
-- [ ] Number/date formatting via `Intl` (fr-FR locale).
-- [ ] Error boundary at app root.
-- [ ] App icon, window title.
-- [ ] Add english language
+- [x] First-run experience: empty DB → friendly "Créez un compte pour commencer" on Bilan/Opérations.
+- [x] Keyboard shortcuts: `⌘F` focus search on Opérations; `Esc` closes modals.
+- [x] Number/date formatting via `Intl` (fr-FR locale).
+- [x] Error boundary at app root.
+- [x] Add english language
+- [x] App icon, window title.
 
 ## M10 — Packaging
 
-- [ ] `pnpm tauri build` produces a signed `.dmg` (and at least one Linux target).
-- [ ] CI workflow (lint + tests) — GitHub Actions or local `make` script.
-- [ ] README for end users (FR), distinct from CLAUDE.md.
+- [x] CI workflow (lint + tests) — GitHub Actions or local `make` script.
+- [x] README for end users (FR), distinct from CLAUDE.md.
+
+---
+
+## M11 — Tink open-banking integration
+
+### M11.1 — Credentials & schema
+
+- [ ] Migration: `tink_credentials(client_id, client_secret, environment CHECK('sandbox','production'))`; add `tink_account_id TEXT`, `tink_last_sync_at TEXT` to `accounts`; add `tink_tokens(tink_user_id, access_token, refresh_token, expires_at)`.
+- [ ] `finp.tink` module: `credentials.py` (read/write), `client.py` (httpx wrapper).
+- [ ] IPC commands: `tink.get_credentials`, `tink.save_credentials`.
+- [ ] Settings modal on Comptes (gear icon, app-wide): `client_id`, `client_secret`, sandbox/production toggle.
+
+### M11.2 — OAuth flow
+
+- [ ] Tauri: `tauri-plugin-shell` to open browser; temporary local HTTP server (random port) to receive the OAuth redirect callback; forward full URL to Python via `tink.handle_oauth_callback(url)`.
+- [ ] Backend `finp.tink.auth`: `authorization_url(redirect_uri)` → Tink OAuth URL.
+- [ ] Backend `finp.tink.auth`: `exchange_code(code, state, redirect_uri)` → fetch tokens, store in `tink_tokens`.
+- [ ] Backend `finp.tink.auth`: `refresh_token_if_needed()` — called transparently before any API request.
+- [ ] Frontend: [Connecter] button opens browser → local server catches callback → calls `tink.handle_oauth_callback` → updates connection state per account.
+
+### M11.3 — Account linking
+
+- [ ] Backend `finp.tink.client`: `list_accounts()` using Tink Data API.
+- [ ] IPC commands: `tink.list_tink_accounts`, `tink.link_account(finp_account_id, tink_account_id)`.
+- [ ] Frontend: post-OAuth link dialog — maps Tink accounts to finp accounts; [Connecter] button disabled until credentials saved, becomes [Lier] after OAuth.
+
+### M11.4 — Sync
+
+- [ ] Backend `finp.tink.sync`: `sync_account(account_id)` — fetch transactions since `tink_last_sync_at` (full history on first sync), normalise to `Operation`, run through existing ingestion path (dedup + rules). Use Tink transaction `id` as `dedup_hash` for Tink-sourced ops.
+- [ ] Update `tink_last_sync_at` on success.
+- [ ] IPC command: `tink.sync_account(account_id)` → `{imported, skipped, failed}`.
+- [ ] Frontend: [Synchroniser] button per connected account, last-sync timestamp, spinner, result toast.
 
 ---
 
 ## Later (planned, not v1)
-
-### Tink open-banking integration
-
-- [ ] Per-account Tink connection: OAuth flow, token storage in OS keychain (Tauri secure storage).
-- [ ] [Connecter] button on Comptes activates.
-- [ ] Sync flow that pulls new operations through the same ingestion path as CSV (shared dedup).
-- [ ] Settings for sandbox vs production credentials.
 
 ### Page "Automatisations" (n8n)
 
 - [ ] Surface the existing event bus over an outbound HTTP webhook adapter, configured per event type.
 - [ ] UI to list configured workflows, last-trigger status.
 - [ ] Add a sidebar entry once functional.
+
+### Page "Immobilier"
+
+- [ ] List real estate properties with key figures: total cost, loan reimbursment, taxes, rent
 
 ### Page "Projets"
 
