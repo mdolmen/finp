@@ -198,6 +198,10 @@ export const en = {
     sandbox: "Sandbox",
     production: "Production",
     credentialsSaved: "Credentials saved.",
+    connectDisabledHint: "Configure Tink credentials first (Bank connection button).",
+    connectingBrowser: "Browser opened…",
+    connectPollError: "Tink connection failed.",
+    connectSuccess: "Connected to Tink.",
   },
   language: {
     label: "Language",

@@ -202,6 +202,10 @@ export const fr = {
     sandbox: "Sandbox",
     production: "Production",
     credentialsSaved: "Identifiants enregistrés.",
+    connectDisabledHint: "Configurez d'abord les identifiants Tink (bouton Connexion bancaire).",
+    connectingBrowser: "Navigateur ouvert…",
+    connectPollError: "Échec de la connexion Tink.",
+    connectSuccess: "Connecté à Tink.",
   },
   language: {
     label: "Langue",

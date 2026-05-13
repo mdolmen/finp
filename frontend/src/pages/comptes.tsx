@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Settings, Trash2, Upload, Wifi } from "lucide-react";
+import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +22,7 @@ import {
 import { ImportDialog } from "@/components/ImportDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { accountsApi, tinkApi, RpcError } from "@/lib/api";
-import type { Account, TinkCredentials, TinkEnvironment } from "@/lib/api";
+import type { Account, TinkEnvironment } from "@/lib/api";
 import { formatEuros as formatEurosFromCents } from "@/lib/format";
 import { t } from "@/i18n";
 
@@ -48,6 +49,10 @@ export function ComptesPage() {
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
+  const [tinkReady, setTinkReady] = useState(false);
+  // accountId → "connecting" | "done" | null
+  const [connectingId, setConnectingId] = useState<number | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -59,7 +64,41 @@ export function ComptesPage() {
 
   useEffect(() => {
     refresh();
+    tinkApi.getCredentials().then((c) => setTinkReady(c !== null)).catch(() => {});
   }, [refresh]);
+
+  // Clear poll on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  async function handleConnect(acc: Account) {
+    setConnectingId(acc.id);
+    setError(null);
+    try {
+      const { auth_url, state } = await tinkApi.startOAuth();
+      await openUrl(auth_url);
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const result = await tinkApi.getOAuthStatus(state);
+          if (result.status === "pending") return;
+          if (pollRef.current) clearInterval(pollRef.current);
+          setConnectingId(null);
+          if (result.status === "complete") {
+            await refresh();
+          } else {
+            setError(result.error ?? t.tink.connectPollError);
+          }
+        } catch {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setConnectingId(null);
+          setError(t.tink.connectPollError);
+        }
+      }, 2000);
+    } catch (e) {
+      setConnectingId(null);
+      setError(formatError(e));
+    }
+  }
 
   async function performDelete(account: Account) {
     try {
@@ -117,12 +156,13 @@ export function ComptesPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                disabled
-                title={t.comptes.connectSoon}
+                disabled={!tinkReady || connectingId === acc.id}
+                title={tinkReady ? t.comptes.connect : t.tink.connectDisabledHint}
                 className="text-muted-foreground"
+                onClick={() => handleConnect(acc)}
               >
                 <Wifi className="size-3.5" />
-                {t.comptes.connect}
+                {connectingId === acc.id ? t.tink.connectingBrowser : t.comptes.connect}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
