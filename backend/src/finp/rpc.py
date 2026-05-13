@@ -23,6 +23,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from finp import __version__, db
+from finp.log import setup as setup_logging
 from finp.commands import accounts as account_cmds
 from finp.commands import bilan as bilan_cmds
 from finp.commands import categories as category_cmds
@@ -120,6 +121,7 @@ def _open_db() -> sqlite3.Connection:
 
 def main() -> None:
     """Run the JSON-RPC loop until stdin closes."""
+    setup_logging()
     conn = _open_db()
     print(f"finp.rpc ready (version {__version__})", file=sys.stderr, flush=True)
     try:

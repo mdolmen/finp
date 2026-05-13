@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from typing import Any, Literal
 
 import httpx
 
+log = logging.getLogger(__name__)
+
 from pydantic import BaseModel, Field
 
-from finp.accounts import Account
 from finp.commands._base import Command, EmptyParams
+from finp.commands.accounts import AccountOut
 from finp.errors import AppError
 from finp.tink import auth as tink_auth
 from finp.tink import client as tink_client
@@ -97,10 +100,12 @@ def _has_connection(conn: sqlite3.Connection, _: EmptyParams) -> HasConnectionOu
 def _get_access_token(conn: sqlite3.Connection) -> str:
     """Return a valid Tink access token, refreshing if needed."""
     token_row = conn.execute(
-        "SELECT tink_user_id, access_token FROM tink_tokens ORDER BY rowid LIMIT 1"
+        "SELECT tink_user_id, expires_at FROM tink_tokens ORDER BY rowid LIMIT 1"
     ).fetchone()
     if token_row is None:
         raise AppError("tink.no_tokens", "No Tink connection found. Complete OAuth first.")
+    log.debug("_get_access_token: tink_user_id=%r expires_at=%r",
+              token_row["tink_user_id"], token_row["expires_at"])
     creds = credentials.get(conn)
     if creds is None:
         raise AppError("tink.no_credentials", "Tink credentials not configured.")
@@ -110,12 +115,18 @@ def _get_access_token(conn: sqlite3.Connection) -> str:
 
 
 def _list_tink_accounts(conn: sqlite3.Connection, _: EmptyParams) -> list[TinkAccountOut]:
+    log.debug("_list_tink_accounts called")
     access_token = _get_access_token(conn)
     try:
+        log.debug("calling tink_client.list_accounts")
         raw_accounts = tink_client.list_accounts(access_token)
+        log.debug("list_accounts returned %d accounts", len(raw_accounts))
     except httpx.HTTPStatusError as exc:
+        log.error("list_accounts HTTP error: status=%d body=%s",
+                  exc.response.status_code, exc.response.text[:500])
         if exc.response.status_code == 401:
-            raise AppError("tink.reauth_required", "Tink token rejected (401). Please reconnect via OAuth.") from exc
+            raise AppError("tink.reauth_required",
+                           f"Tink API 401. Body: {exc.response.text[:200]}") from exc
         raise
     result = []
     for a in raw_accounts:
@@ -128,7 +139,7 @@ def _list_tink_accounts(conn: sqlite3.Connection, _: EmptyParams) -> list[TinkAc
     return result
 
 
-def _link_account(conn: sqlite3.Connection, params: LinkAccountParams) -> Account:
+def _link_account(conn: sqlite3.Connection, params: LinkAccountParams) -> AccountOut:
     updated = conn.execute(
         "UPDATE accounts SET tink_account_id = ? WHERE id = ?",
         (params.tink_account_id, params.finp_account_id),
@@ -136,7 +147,22 @@ def _link_account(conn: sqlite3.Connection, params: LinkAccountParams) -> Accoun
     if updated == 0:
         raise AppError("account.not_found", f"Account {params.finp_account_id} not found.")
     from finp.accounts import get as get_account
-    return get_account(conn, params.finp_account_id)
+    return AccountOut.model_validate(get_account(conn, params.finp_account_id))
+
+
+class SyncAccountParams(BaseModel):
+    account_id: int
+
+
+class SyncResult(BaseModel):
+    imported: int
+    skipped: int
+
+
+def _sync_account(conn: sqlite3.Connection, params: SyncAccountParams) -> SyncResult:
+    from finp.tink.sync import sync_account
+    result = sync_account(conn, params.account_id)
+    return SyncResult(**result)
 
 
 METHODS: dict[str, Command] = {
@@ -147,4 +173,5 @@ METHODS: dict[str, Command] = {
     "tink.has_connection": Command(EmptyParams, _has_connection),
     "tink.list_tink_accounts": Command(EmptyParams, _list_tink_accounts),
     "tink.link_account": Command(LinkAccountParams, _link_account),
+    "tink.sync_account": Command(SyncAccountParams, _sync_account),
 }

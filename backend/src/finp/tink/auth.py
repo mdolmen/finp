@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import http.server
 import json
+import logging
 import os
 import secrets
 import sqlite3
@@ -27,6 +28,8 @@ from typing import Any
 from finp.db import connect, default_db_path
 from finp.errors import AppError
 from finp.tink import client as tink_client
+
+log = logging.getLogger(__name__)
 
 LINK_BASE = "https://link.tink.com/1.0/authorize/"
 
@@ -143,9 +146,12 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
                 code,
                 session["redirect_uri"],
             )
+            log.info("exchange_code success: expires_in=%r has_refresh_token=%r credentials_id=%r",
+                     token_data.get("expires_in"), bool(token_data.get("refresh_token")), credentials_id)
             conn = connect(_db_path())
             tink_user_id = _store_tokens(conn, {**token_data, "credentials_id": credentials_id})
             conn.close()
+            log.info("tokens stored for tink_user_id=%r", tink_user_id)
             self._respond(200, _success_html())
             self._finish_session(state, tink_user_id=tink_user_id)
         except Exception as exc:
@@ -230,13 +236,21 @@ def refresh_token_if_needed(
         raise ValueError(f"No tokens stored for tink_user_id={tink_user_id!r}")
 
     expires_at = datetime.fromisoformat(row["expires_at"])
-    if expires_at - datetime.now(UTC) > timedelta(minutes=5):
+    now = datetime.now(UTC)
+    remaining = expires_at - now
+    log.debug("token check: tink_user_id=%r expires_at=%s now=%s remaining=%s",
+              tink_user_id, expires_at.isoformat(), now.isoformat(), remaining)
+
+    if remaining > timedelta(minutes=5):
+        log.debug("token valid (%.0f min remaining)", remaining.total_seconds() / 60)
         return row["access_token"]
 
     if not row["refresh_token"]:
+        log.warning("token near-expiry/expired and no refresh_token stored; expires_at=%s now=%s",
+                    expires_at.isoformat(), now.isoformat())
         raise AppError(
             "tink.reauth_required",
-            "Tink token expired. Please reconnect via the OAuth flow.",
+            f"Tink token expired (expires_at={expires_at.isoformat()}, remaining={remaining}). Please reconnect.",
         )
 
     token_data = tink_client.refresh_token(client_id, client_secret, row["refresh_token"])
