@@ -189,6 +189,16 @@ export const en = {
     body: "An unexpected error occurred. Please reload the application.",
     reload: "Reload",
   },
+  tink: {
+    settingsTitle: "Bank connection (Tink)",
+    settingsDescription: "Your Tink application credentials. Get them at console.tink.com.",
+    fieldClientId: "Client ID",
+    fieldClientSecret: "Client Secret",
+    fieldEnvironment: "Environment",
+    sandbox: "Sandbox",
+    production: "Production",
+    credentialsSaved: "Credentials saved.",
+  },
   language: {
     label: "Language",
     fr: "Français",

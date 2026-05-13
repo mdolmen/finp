@@ -193,6 +193,16 @@ export const fr = {
     body: "Une erreur inattendue est survenue. Veuillez recharger l'application.",
     reload: "Recharger",
   },
+  tink: {
+    settingsTitle: "Connexion bancaire (Tink)",
+    settingsDescription: "Identifiants de l'application Tink. Obtenez-les sur console.tink.com.",
+    fieldClientId: "Client ID",
+    fieldClientSecret: "Client Secret",
+    fieldEnvironment: "Environnement",
+    sandbox: "Sandbox",
+    production: "Production",
+    credentialsSaved: "Identifiants enregistrés.",
+  },
   language: {
     label: "Langue",
     fr: "Français",

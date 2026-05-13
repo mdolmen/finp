@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,8 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { accountsApi, RpcError } from "@/lib/api";
-import type { Account } from "@/lib/api";
+import { accountsApi, tinkApi, RpcError } from "@/lib/api";
+import type { Account, TinkCredentials, TinkEnvironment } from "@/lib/api";
 import { formatEuros as formatEurosFromCents } from "@/lib/format";
 import { t } from "@/i18n";
 
@@ -37,6 +44,7 @@ export function ComptesPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [tinkSettingsOpen, setTinkSettingsOpen] = useState(false);
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
@@ -64,7 +72,17 @@ export function ComptesPage() {
 
   return (
     <div className="px-6 py-5 max-w-3xl">
-      <div className="flex items-center justify-end mb-5">
+      <div className="flex items-center justify-end gap-2 mb-5">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setTinkSettingsOpen(true)}
+          title={t.tink.settingsTitle}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Wifi className="size-3.5" />
+          {t.tink.settingsTitle}
+        </Button>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="size-3.5" />
           {t.common.add}
@@ -133,6 +151,11 @@ export function ComptesPage() {
         </ul>
       )}
 
+      <TinkSettingsDialog
+        open={tinkSettingsOpen}
+        onOpenChange={setTinkSettingsOpen}
+      />
+
       <AddAccountDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -173,6 +196,110 @@ export function ComptesPage() {
         onConfirm={() => deleteConfirm && performDelete(deleteConfirm)}
       />
     </div>
+  );
+}
+
+function TinkSettingsDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [environment, setEnvironment] = useState<TinkEnvironment>("sandbox");
+  const [submitting, setSubmitting] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setInfo(null);
+    setError(null);
+    tinkApi.getCredentials().then((creds) => {
+      if (creds) {
+        setClientId(creds.client_id);
+        setClientSecret(creds.client_secret);
+        setEnvironment(creds.environment);
+      }
+    }).catch(() => {});
+  }, [open]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clientId.trim() || !clientSecret.trim()) return;
+    setSubmitting(true);
+    setInfo(null);
+    setError(null);
+    try {
+      await tinkApi.saveCredentials({ client_id: clientId.trim(), client_secret: clientSecret.trim(), environment });
+      setInfo(t.tink.credentialsSaved);
+    } catch (e) {
+      setError(e instanceof RpcError ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t.tink.settingsTitle}</DialogTitle>
+          <DialogDescription>{t.tink.settingsDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.tink.fieldClientId}</Label>
+            <Input
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              placeholder="your-client-id"
+              disabled={submitting}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.tink.fieldClientSecret}</Label>
+            <Input
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder="••••••••"
+              disabled={submitting}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.tink.fieldEnvironment}</Label>
+            <Select
+              value={environment}
+              onValueChange={(v) => setEnvironment(v as TinkEnvironment)}
+              disabled={submitting}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sandbox">{t.tink.sandbox}</SelectItem>
+                <SelectItem value="production">{t.tink.production}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {info && <p className="text-sm text-credit">{info}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+              {t.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!clientId.trim() || !clientSecret.trim() || submitting}>
+              {t.comptes.save}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

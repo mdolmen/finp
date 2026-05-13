@@ -14,4 +14,6 @@ export type {
 } from "./bilan";
 export { plannedApi } from "./planned";
 export type { PlannedOperation } from "./planned";
+export { tinkApi } from "./tink";
+export type { TinkCredentials, TinkEnvironment } from "./tink";
 export type * from "./types";
