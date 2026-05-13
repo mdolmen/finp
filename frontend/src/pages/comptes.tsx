@@ -50,8 +50,9 @@ export function ComptesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
   const [tinkReady, setTinkReady] = useState(false);
-  // accountId → "connecting" | "done" | null
+  const [tinkConnected, setTinkConnected] = useState(false);
   const [connectingId, setConnectingId] = useState<number | null>(null);
+  const [linkFor, setLinkFor] = useState<Account | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
@@ -62,12 +63,16 @@ export function ComptesPage() {
     }
   }, []);
 
+  const refreshTinkStatus = useCallback(() => {
+    tinkApi.getCredentials().then((c) => setTinkReady(c !== null)).catch(() => {});
+    tinkApi.hasConnection().then((r) => setTinkConnected(r.connected)).catch(() => {});
+  }, []);
+
   useEffect(() => {
     refresh();
-    tinkApi.getCredentials().then((c) => setTinkReady(c !== null)).catch(() => {});
-  }, [refresh]);
+    refreshTinkStatus();
+  }, [refresh, refreshTinkStatus]);
 
-  // Clear poll on unmount
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   async function handleConnect(acc: Account) {
@@ -84,7 +89,8 @@ export function ComptesPage() {
           if (pollRef.current) clearInterval(pollRef.current);
           setConnectingId(null);
           if (result.status === "complete") {
-            await refresh();
+            setTinkConnected(true);
+            setLinkFor(acc);
           } else {
             setError(result.error ?? t.tink.connectPollError);
           }
@@ -153,17 +159,37 @@ export function ComptesPage() {
               <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                 {formatLastImport(acc.last_import_at)}
               </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={!tinkReady || connectingId === acc.id}
-                title={tinkReady ? t.comptes.connect : t.tink.connectDisabledHint}
-                className="text-muted-foreground"
-                onClick={() => handleConnect(acc)}
-              >
-                <Wifi className="size-3.5" />
-                {connectingId === acc.id ? t.tink.connectingBrowser : t.comptes.connect}
-              </Button>
+              {acc.tink_account_id ? (
+                <span
+                  className="flex items-center gap-1 text-xs text-credit px-2"
+                  title={acc.tink_account_id}
+                >
+                  <Wifi className="size-3.5" />
+                  {t.tink.linked}
+                </span>
+              ) : tinkConnected ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground"
+                  onClick={() => setLinkFor(acc)}
+                >
+                  <Wifi className="size-3.5" />
+                  {t.tink.link}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!tinkReady || connectingId === acc.id}
+                  title={tinkReady ? t.comptes.connect : t.tink.connectDisabledHint}
+                  className="text-muted-foreground"
+                  onClick={() => handleConnect(acc)}
+                >
+                  <Wifi className="size-3.5" />
+                  {connectingId === acc.id ? t.tink.connectingBrowser : t.comptes.connect}
+                </Button>
+              )}
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
                 {t.comptes.import}
@@ -217,6 +243,17 @@ export function ComptesPage() {
           onClose={() => setSettingsFor(null)}
           onSaved={async () => {
             setSettingsFor(null);
+            await refresh();
+          }}
+        />
+      )}
+
+      {linkFor && (
+        <LinkAccountDialog
+          account={linkFor}
+          onClose={() => setLinkFor(null)}
+          onLinked={async () => {
+            setLinkFor(null);
             await refresh();
           }}
         />
@@ -503,6 +540,87 @@ function AccountSettingsDialog({
             </Button>
             <Button type="submit" disabled={!valid || submitting}>
               {t.comptes.save}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LinkAccountDialog({
+  account,
+  onClose,
+  onLinked,
+}: {
+  account: Account;
+  onClose: () => void;
+  onLinked: () => void;
+}) {
+  const [tinkAccounts, setTinkAccounts] = useState<import("@/lib/api").TinkAccount[] | null>(null);
+  const [selected, setSelected] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    tinkApi.listTinkAccounts()
+      .then((list) => {
+        setTinkAccounts(list);
+        const pre = list.find((a) => a.id === account.tink_account_id);
+        if (pre) setSelected(pre.id);
+      })
+      .catch(() => setError(t.tink.linkError));
+  }, [account.tink_account_id]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await tinkApi.linkAccount(account.id, selected);
+      onLinked();
+    } catch (e) {
+      setError(formatError(e));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t.tink.linkTitle.replace("{name}", account.name)}</DialogTitle>
+          <DialogDescription>{t.tink.linkDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.tink.linkFieldTinkAccount}</Label>
+            {tinkAccounts === null && !error ? (
+              <p className="text-sm text-muted-foreground">{t.common.loading}</p>
+            ) : (
+              <Select value={selected} onValueChange={setSelected} disabled={submitting}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder={t.tink.linkNone} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(tinkAccounts ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                      {a.iban ? ` — ${a.iban}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
+              {t.common.cancel}
+            </Button>
+            <Button type="submit" disabled={!selected || submitting}>
+              {t.tink.linkSave}
             </Button>
           </DialogFooter>
         </form>

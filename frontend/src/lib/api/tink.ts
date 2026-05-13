@@ -21,6 +21,13 @@ export interface OAuthStatusResult {
   error?: string;
 }
 
+export interface TinkAccount {
+  id: string;
+  name: string;
+  type: string;
+  iban: string | null;
+}
+
 export const tinkApi = {
   getCredentials(): Promise<TinkCredentials | null> {
     return rpc("tink.get_credentials");
@@ -36,5 +43,17 @@ export const tinkApi = {
 
   getOAuthStatus(state: string): Promise<OAuthStatusResult> {
     return rpc("tink.get_oauth_status", { state });
+  },
+
+  hasConnection(): Promise<{ connected: boolean }> {
+    return rpc("tink.has_connection");
+  },
+
+  listTinkAccounts(): Promise<TinkAccount[]> {
+    return rpc("tink.list_tink_accounts");
+  },
+
+  linkAccount(finp_account_id: number, tink_account_id: string): Promise<import("./types").Account> {
+    return rpc("tink.link_account", { finp_account_id, tink_account_id });
   },
 };

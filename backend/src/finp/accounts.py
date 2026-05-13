@@ -33,6 +33,7 @@ class Account:
     # Running solde: initial balance + every operation on or after the
     # opening date (or every operation if no opening date is set).
     current_balance_cents: int
+    tink_account_id: str | None
 
 
 def _row_to_account(row: sqlite3.Row) -> Account:
@@ -46,12 +47,13 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         initial_balance_cents=row["initial_balance_cents"],
         initial_balance_date=row["initial_balance_date"],
         current_balance_cents=row["current_balance_cents"],
+        tink_account_id=row["tink_account_id"],
     )
 
 
 _SELECT_ACCOUNT = (
     "SELECT a.id, a.name, a.csv_mapping_json, a.created_at,"
-    " a.initial_balance_cents, a.initial_balance_date,"
+    " a.initial_balance_cents, a.initial_balance_date, a.tink_account_id,"
     " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at,"
     " a.initial_balance_cents + COALESCE("
     "   (SELECT SUM(o.montant_cents) FROM operations o"

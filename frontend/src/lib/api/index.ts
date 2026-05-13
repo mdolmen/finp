@@ -21,5 +21,6 @@ export type {
   StartOAuthResult,
   OAuthStatusResult,
   OAuthStatus,
+  TinkAccount,
 } from "./tink";
 export type * from "./types";
