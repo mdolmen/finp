@@ -71,16 +71,21 @@ impl RpcClient {
             std::env::set_var("PATH", parts.join(std::ffi::OsStr::new(":")));
         }
 
-        let mut child = Command::new("uv")
-            .arg("run")
+        // Dev and release builds share the same binary but use separate databases
+        // so test data never pollutes the real one.
+        let mut cmd = Command::new("uv");
+        cmd.arg("run")
             .arg("--project")
             .arg(&backend_dir)
             .arg("finp-rpc")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
-            .kill_on_drop(true)
-            .spawn()?;
+            .kill_on_drop(true);
+        if cfg!(debug_assertions) {
+            cmd.env("FINP_DB_PATH", backend_dir.join("dev.db"));
+        }
+        let mut child = cmd.spawn()?;
 
         let stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("no stdin"))?;
         let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("no stdout"))?;
