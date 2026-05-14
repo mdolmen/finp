@@ -27,6 +27,7 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const NO_CATEGORY = "__none__";
+const ALL_CATEGORIES = "__all__";
 const FETCH_LIMIT = 1000;
 
 type Filters = {
@@ -52,6 +53,7 @@ export function OperationsPage() {
   const debouncedMontant = useDebounced(montantText, 200);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [categoryId, setCategoryId] = useState<number | null>(null);
 
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
@@ -77,13 +79,11 @@ export function OperationsPage() {
       return;
     }
     try {
-      // When uncategorizedOnly is true, include_no_category alone (with no
-      // category_ids) restricts to category IS NULL on the backend. When
-      // false, no category dimension is filtered.
       const rows = await operationsApi.list({
         types,
         search: debouncedSearch.trim() || null,
         include_no_category: filters.uncategorizedOnly,
+        category_ids: categoryId !== null ? [categoryId] : null,
         montant_op: montantCents !== null ? montantOp : null,
         montant_value_cents: montantCents,
         date_from: dateFrom || null,
@@ -94,7 +94,7 @@ export function OperationsPage() {
     } catch (e) {
       setError(formatError(e));
     }
-  }, [types, debouncedSearch, filters.uncategorizedOnly, montantOp, montantCents, dateFrom, dateTo]);
+  }, [types, debouncedSearch, filters.uncategorizedOnly, categoryId, montantOp, montantCents, dateFrom, dateTo]);
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
@@ -150,6 +150,11 @@ export function OperationsPage() {
 
   function setDateToAndClear(v: string) {
     setDateTo(v);
+    setSelected(new Set());
+  }
+
+  function setCategoryIdAndClear(v: number | null) {
+    setCategoryId(v);
     setSelected(new Set());
   }
 
@@ -248,13 +253,26 @@ export function OperationsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <Input
-          ref={searchRef}
-          value={search}
-          onChange={(e) => setSearchAndClear(e.target.value)}
-          placeholder={t.operations.searchPlaceholder}
-          className="max-w-sm h-8"
-        />
+        <div className="relative max-w-sm">
+          <Input
+            ref={searchRef}
+            value={search}
+            onChange={(e) => setSearchAndClear(e.target.value)}
+            placeholder={t.operations.searchPlaceholder}
+            className="h-8 pr-7"
+            spellCheck={false}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearchAndClear("")}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Effacer la recherche"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
         <Select
           value={montantOp}
           onValueChange={(v) => setMontantOpAndClear(v as ">" | "<" | "==")}
@@ -332,6 +350,22 @@ export function OperationsPage() {
           checked={filters.internal}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, internal: v }))}
         />
+        <Select
+          value={categoryId !== null ? String(categoryId) : ALL_CATEGORIES}
+          onValueChange={(v) => setCategoryIdAndClear(v === ALL_CATEGORIES ? null : Number(v))}
+        >
+          <SelectTrigger className="h-7 text-xs w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CATEGORIES}>{t.common.all}</SelectItem>
+            {cats.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error && <p className="text-sm text-destructive mb-2">{error}</p>}
