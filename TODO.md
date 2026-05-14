@@ -137,6 +137,8 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ## M11 — Tink open-banking integration
 
+> **Parked.** The Tink API is designed for companies providing financial services to their users, not for individuals accessing their own accounts directly. The UI is disabled; the backend code is complete and preserved for reference.
+
 ### M11.1 — Credentials & schema
 
 - [x] Migration: `tink_credentials(client_id, client_secret, environment CHECK('sandbox','production'))`; add `tink_account_id TEXT`, `tink_last_sync_at TEXT` to `accounts`; add `tink_tokens(tink_user_id, access_token, refresh_token, expires_at)`.
@@ -154,16 +156,17 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M11.3 — Account linking
 
-- [ ] Backend `finp.tink.client`: `list_accounts()` using Tink Data API.
-- [ ] IPC commands: `tink.list_tink_accounts`, `tink.link_account(finp_account_id, tink_account_id)`.
-- [ ] Frontend: post-OAuth link dialog — maps Tink accounts to finp accounts; [Lier] button disabled.
+- [x] Backend `finp.tink.client`: `list_accounts()` using Tink Data API.
+- [x] IPC commands: `tink.list_tink_accounts`, `tink.link_account(finp_account_id, tink_account_id)`.
+- [x] Frontend: post-OAuth link dialog — maps Tink accounts to finp accounts; [Lier] button disabled.
 
 ### M11.4 — Sync
 
-- [ ] Backend `finp.tink.sync`: `sync_account(account_id)` — fetch transactions since `tink_last_sync_at` (full history on first sync), normalise to `Operation`, run through existing ingestion path (dedup + rules). Use Tink transaction `id` as `dedup_hash` for Tink-sourced ops.
-- [ ] Update `tink_last_sync_at` on success.
-- [ ] IPC command: `tink.sync_account(account_id)` → `{imported, skipped, failed}`.
-- [ ] Frontend: [Synchroniser] button per connected account, last-sync timestamp, spinner, result toast.
+- [x] Backend `finp.tink.sync`: `sync_account(account_id)` — fetch transactions since `tink_last_sync_at` (full history on first sync), normalise to `Operation`, run through existing ingestion path (dedup + rules). Use Tink transaction `id` as `dedup_hash` for Tink-sourced ops.
+- [x] Update `tink_last_sync_at` on success.
+- [x] IPC command: `tink.sync_account(account_id)` → `{imported, skipped, failed}`.
+- [x] Frontend: [Synchroniser] button per connected account, last-sync timestamp, spinner, result toast.
+- [x] Disable all Tink UI.
 
 ---
 
