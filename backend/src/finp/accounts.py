@@ -34,6 +34,7 @@ class Account:
     # opening date (or every operation if no opening date is set).
     current_balance_cents: int
     tink_account_id: str | None
+    tink_last_sync_at: str | None
 
 
 def _row_to_account(row: sqlite3.Row) -> Account:
@@ -48,12 +49,13 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         initial_balance_date=row["initial_balance_date"],
         current_balance_cents=row["current_balance_cents"],
         tink_account_id=row["tink_account_id"],
+        tink_last_sync_at=row["tink_last_sync_at"],
     )
 
 
 _SELECT_ACCOUNT = (
     "SELECT a.id, a.name, a.csv_mapping_json, a.created_at,"
-    " a.initial_balance_cents, a.initial_balance_date, a.tink_account_id,"
+    " a.initial_balance_cents, a.initial_balance_date, a.tink_account_id, a.tink_last_sync_at,"
     " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at,"
     " a.initial_balance_cents + COALESCE("
     "   (SELECT SUM(o.montant_cents) FROM operations o"

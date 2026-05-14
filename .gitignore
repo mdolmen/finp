@@ -41,3 +41,4 @@ src-tauri/gen/
 # Env
 .env
 .env.local
+dev.db

@@ -7,7 +7,11 @@ before calling (see ``auth.refresh_token_if_needed``).
 
 from __future__ import annotations
 
+import logging
+
 import httpx
+
+log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.tink.com"
 
@@ -61,16 +65,28 @@ def list_accounts(access_token: str) -> list[dict]:
         return r.json().get("accounts", [])
 
 
-def list_transactions(access_token: str, account_id: str, *, page_token: str | None = None) -> dict:
-    """Return one page of transactions for *account_id*.
+def list_transactions(
+    access_token: str,
+    account_id: str,
+    *,
+    page_token: str | None = None,
+    date_from: str | None = None,
+) -> dict:
+    """Return one page of BOOKED transactions for *account_id*.
 
-    Returns the raw Tink response dict (``transactions`` list + optional
-    ``nextPageToken``).
+    *date_from* is an ISO date string (YYYY-MM-DD); when given, only transactions
+    with a booking date >= that date are returned (incremental sync).
+    Returns the raw Tink response dict (``transactions`` list + optional ``nextPageToken``).
     """
-    params: dict = {"accountIdIn": account_id, "pageSize": 200, "status": "BOOKED"}
+    params: dict = {"accountIdIn": account_id, "pageSize": 100, "statusIn": "BOOKED"}
     if page_token:
         params["pageToken"] = page_token
+    if date_from:
+        params["bookedDateGte"] = date_from
+    log.debug("list_transactions: account_id=%r date_from=%r page_token=%r", account_id, date_from, page_token)
     with _client(access_token) as c:
         r = c.get("/data/v2/transactions", params=params)
-        r.raise_for_status()
+        if not r.is_success:
+            log.error("list_transactions %d: %s", r.status_code, r.text[:500])
+            r.raise_for_status()
         return r.json()

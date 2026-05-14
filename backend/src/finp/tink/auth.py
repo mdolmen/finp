@@ -80,6 +80,11 @@ def _store_tokens(conn: sqlite3.Connection, token_data: dict) -> str:
         datetime.now(UTC)
         + timedelta(seconds=int(token_data.get("expires_in", 3600)))
     ).isoformat()
+    # Keep only one token row — each new OAuth may produce a different tink_user_id,
+    # so a plain UPSERT would accumulate stale rows. Delete first.
+    conn.execute(
+        "DELETE FROM tink_tokens WHERE tink_user_id != ?", (tink_user_id,)
+    )
     conn.execute(
         """
         INSERT INTO tink_tokens

@@ -93,14 +93,25 @@ class LinkAccountParams(BaseModel):
 
 
 def _has_connection(conn: sqlite3.Connection, _: EmptyParams) -> HasConnectionOut:
-    count = conn.execute("SELECT COUNT(*) FROM tink_tokens").fetchone()[0]
-    return HasConnectionOut(connected=count > 0)
+    from datetime import UTC, datetime, timedelta
+    row = conn.execute(
+        "SELECT expires_at FROM tink_tokens ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()
+    if row is None:
+        return HasConnectionOut(connected=False)
+    try:
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        valid = expires_at - datetime.now(UTC) > timedelta(minutes=5)
+    except Exception:
+        valid = False
+    log.debug("has_connection: expires_at=%r valid=%r", row["expires_at"], valid)
+    return HasConnectionOut(connected=valid)
 
 
 def _get_access_token(conn: sqlite3.Connection) -> str:
     """Return a valid Tink access token, refreshing if needed."""
     token_row = conn.execute(
-        "SELECT tink_user_id, expires_at FROM tink_tokens ORDER BY rowid LIMIT 1"
+        "SELECT tink_user_id, expires_at FROM tink_tokens ORDER BY rowid DESC LIMIT 1"
     ).fetchone()
     if token_row is None:
         raise AppError("tink.no_tokens", "No Tink connection found. Complete OAuth first.")

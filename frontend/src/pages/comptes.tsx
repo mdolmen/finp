@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Settings, Trash2, Upload, Wifi } from "lucide-react";
+import { Plus, RefreshCw, Settings, Trash2, Upload, Wifi } from "lucide-react";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,7 @@ function formatLastImport(iso: string | null): string {
   if (!iso) return t.comptes.neverImported;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return t.comptes.lastImport.replace("{date}", DATE_TIME_FMT.format(d));
+  return DATE_TIME_FMT.format(d);
 }
 
 export function ComptesPage() {
@@ -51,6 +51,8 @@ export function ComptesPage() {
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
   const [tinkConnected, setTinkConnected] = useState(false);
   const [linkFor, setLinkFor] = useState<Account | null>(null);
+  const [syncingId, setSyncingId] = useState<number | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<number, string>>({});
 
   const refresh = useCallback(async () => {
     try {
@@ -68,6 +70,25 @@ export function ComptesPage() {
     refresh();
     refreshTinkStatus();
   }, [refresh, refreshTinkStatus]);
+
+  async function handleSync(acc: Account) {
+    setSyncingId(acc.id);
+    setSyncResults((prev) => { const n = { ...prev }; delete n[acc.id]; return n; });
+    try {
+      const { imported, skipped } = await tinkApi.syncAccount(acc.id);
+      setSyncResults((prev) => ({
+        ...prev,
+        [acc.id]: t.tink.syncResult
+          .replace("{imported}", String(imported))
+          .replace("{skipped}", String(skipped)),
+      }));
+      await refresh();
+    } catch {
+      setSyncResults((prev) => ({ ...prev, [acc.id]: t.tink.syncError }));
+    } finally {
+      setSyncingId(null);
+    }
+  }
 
   async function performDelete(account: Account) {
     try {
@@ -123,13 +144,28 @@ export function ComptesPage() {
                 {formatLastImport(acc.last_import_at)}
               </span>
               {acc.tink_account_id ? (
-                <span
-                  className="flex items-center gap-1 text-xs text-credit px-2"
-                  title={acc.tink_account_id}
-                >
-                  <Wifi className="size-3.5" />
-                  {t.tink.linked}
-                </span>
+                <>
+                  <span
+                    className="flex items-center gap-1 text-xs text-credit px-2"
+                    title={acc.tink_account_id}
+                  >
+                    <Wifi className="size-3.5" />
+                    {t.tink.linked}
+                  </span>
+                  {syncResults[acc.id] && (
+                    <span className="text-xs text-muted-foreground">{syncResults[acc.id]}</span>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={syncingId === acc.id}
+                    className="text-muted-foreground"
+                    onClick={() => handleSync(acc)}
+                  >
+                    <RefreshCw className={`size-3.5 ${syncingId === acc.id ? "animate-spin" : ""}`} />
+                    {syncingId === acc.id ? t.tink.syncing : t.tink.sync}
+                  </Button>
+                </>
               ) : (
                 <Button
                   size="sm"
@@ -210,10 +246,10 @@ export function ComptesPage() {
             setLinkFor(null);
             await refresh();
           }}
-          onReauthRequired={() => {
+          onReauthRequired={(msg) => {
             setLinkFor(null);
             setTinkConnected(false);
-            setError(t.tink.reauthRequired);
+            setError(msg ?? t.tink.reauthRequired);
           }}
         />
       )}
@@ -248,7 +284,6 @@ function TinkSettingsDialog({
   const [clientSecret, setClientSecret] = useState("");
   const [environment, setEnvironment] = useState<TinkEnvironment>("sandbox");
   const [connecting, setConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -266,7 +301,6 @@ function TinkSettingsDialog({
         setEnvironment(creds.environment);
       }
     }).catch(() => {});
-    tinkApi.hasConnection().then((r) => setConnected(r.connected)).catch(() => {});
   }, [open]);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
@@ -288,7 +322,6 @@ function TinkSettingsDialog({
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           setConnecting(false);
           if (result.status === "complete") {
-            setConnected(true);
             onConnected();
           } else {
             setError(result.error ?? t.tink.connectPollError);
@@ -310,10 +343,6 @@ function TinkSettingsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t.tink.settingsTitle}</DialogTitle>
-          <span className={`text-xs flex items-center gap-1.5 ${connected ? "text-credit" : "text-muted-foreground"}`}>
-            <span className={`inline-block size-1.5 rounded-full ${connected ? "bg-credit" : "bg-muted-foreground"}`} />
-            {connected ? t.tink.statusConnected : t.tink.statusDisconnected}
-          </span>
           <DialogDescription>{t.tink.settingsDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -546,7 +575,7 @@ function LinkAccountDialog({
   account: Account;
   onClose: () => void;
   onLinked: () => void;
-  onReauthRequired: () => void;
+  onReauthRequired: (msg: string) => void;
 }) {
   const [tinkAccounts, setTinkAccounts] = useState<import("@/lib/api").TinkAccount[] | null>(null);
   const [selected, setSelected] = useState<string>("");
@@ -562,7 +591,7 @@ function LinkAccountDialog({
       })
       .catch((e) => {
         if (e instanceof RpcError && (e.appCode === "tink.reauth_required" || e.appCode === "tink.no_tokens")) {
-          onReauthRequired();
+          onReauthRequired(e.message);
         } else {
           setError(t.tink.linkError);
         }
@@ -597,12 +626,12 @@ function LinkAccountDialog({
               <p className="text-sm text-muted-foreground">{t.common.loading}</p>
             ) : (
               <Select value={selected} onValueChange={setSelected} disabled={submitting}>
-                <SelectTrigger className="h-8 text-sm">
+                <SelectTrigger className="h-8 text-sm w-full min-w-0">
                   <SelectValue placeholder={t.tink.linkNone} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-w-sm">
                   {(tinkAccounts ?? []).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
+                    <SelectItem key={a.id} value={a.id} className="truncate">
                       {a.name}
                       {a.iban ? ` — ${a.iban}` : ""}
                     </SelectItem>

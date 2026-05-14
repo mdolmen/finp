@@ -218,6 +218,10 @@ export const fr = {
     linkNone: "— aucun —",
     linkSave: "Lier",
     linkError: "Impossible de charger les comptes Tink.",
+    sync: "Sync",
+    syncing: "Sync…",
+    syncResult: "{imported} importée(s), {skipped} ignorée(s)",
+    syncError: "Erreur lors de la synchronisation.",
   },
   language: {
     label: "Langue",

@@ -13,6 +13,7 @@ export type Account = {
   initial_balance_date: string | null;
   current_balance_cents: number;
   tink_account_id: string | null;
+  tink_last_sync_at: string | null;
 };
 
 export type Category = {

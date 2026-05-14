@@ -24,6 +24,8 @@ class AccountOut(BaseModel):
     initial_balance_cents: int
     initial_balance_date: str | None
     current_balance_cents: int
+    tink_account_id: str | None = None
+    tink_last_sync_at: str | None = None
 
 
 class CreateParams(BaseModel):

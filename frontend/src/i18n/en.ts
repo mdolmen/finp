@@ -214,6 +214,10 @@ export const en = {
     linkNone: "— none —",
     linkSave: "Link",
     linkError: "Could not load Tink accounts.",
+    sync: "Sync",
+    syncing: "Syncing…",
+    syncResult: "{imported} imported, {skipped} skipped",
+    syncError: "Sync failed.",
   },
   language: {
     label: "Language",

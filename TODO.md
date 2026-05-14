@@ -156,7 +156,7 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 - [ ] Backend `finp.tink.client`: `list_accounts()` using Tink Data API.
 - [ ] IPC commands: `tink.list_tink_accounts`, `tink.link_account(finp_account_id, tink_account_id)`.
-- [ ] Frontend: post-OAuth link dialog — maps Tink accounts to finp accounts; [Connecter] button disabled until credentials saved, becomes [Lier] after OAuth.
+- [ ] Frontend: post-OAuth link dialog — maps Tink accounts to finp accounts; [Lier] button disabled.
 
 ### M11.4 — Sync
 

@@ -56,4 +56,8 @@ export const tinkApi = {
   linkAccount(finp_account_id: number, tink_account_id: string): Promise<import("./types").Account> {
     return rpc("tink.link_account", { finp_account_id, tink_account_id });
   },
+
+  syncAccount(account_id: number): Promise<{ imported: number; skipped: number }> {
+    return rpc("tink.sync_account", { account_id });
+  },
 };
