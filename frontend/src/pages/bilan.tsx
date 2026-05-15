@@ -24,11 +24,12 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MultiSelect } from "@/components/MultiSelect";
-import { accountsApi, bilanApi, plannedApi, RpcError } from "@/lib/api";
+import { accountsApi, bilanApi, operationsApi, plannedApi, RpcError } from "@/lib/api";
 import type {
   Account,
   BilanFilterOptions,
   BilanSummary,
+  Operation,
   PlannedOperation,
 } from "@/lib/api";
 import { formatDate, formatEuros, formatMonth } from "@/lib/format";
@@ -51,6 +52,7 @@ export function BilanPage() {
   const [addPlannedOpen, setAddPlannedOpen] = useState(false);
   const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [drilldown, setDrilldown] = useState<{ month: string; type: "debit" | "credit" } | null>(null);
 
   const refreshPlanned = useCallback(async () => {
     try {
@@ -200,7 +202,7 @@ export function BilanPage() {
 
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
-      <BilanChart summary={summary} yMaxEuros={yMaxEuros} />
+      <BilanChart summary={summary} yMaxEuros={yMaxEuros} onBarClick={setDrilldown} />
 
       <div className="grid grid-cols-2 gap-4 mt-4">
         <KpiPanel
@@ -247,6 +249,15 @@ export function BilanPage() {
         destructive
         onConfirm={handleDeletePlanned}
       />
+
+      {drilldown && (
+        <DrilldownModal
+          month={drilldown.month}
+          type={drilldown.type}
+          summary={summary}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
     </div>
   );
 }
@@ -449,6 +460,119 @@ function AddPlannedDialog({
   );
 }
 
+function DrilldownModal({
+  month,
+  type,
+  summary,
+  onClose,
+}: {
+  month: string;
+  type: "debit" | "credit";
+  summary: BilanSummary | null;
+  onClose: () => void;
+}) {
+  const [ops, setOps] = useState<Operation[] | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [year, mon] = month.split("-").map(Number);
+  const dateFrom = `${month}-01`;
+  const dateTo = new Date(year, mon, 0).toISOString().slice(0, 10);
+
+  useEffect(() => {
+    operationsApi
+      .list({ types: [type], date_from: dateFrom, date_to: dateTo, limit: 500 })
+      .then(setOps)
+      .catch((e) => setFetchError(e instanceof RpcError ? e.message : String(e)));
+  }, [month, type, dateFrom, dateTo]);
+
+  // Group ops by category, sorted desc by group total — same order as the chart.
+  const groups = useMemo(() => {
+    if (!ops) return null;
+    const byKey = new Map<
+      string,
+      { name: string | null; id: number | null; ops: Operation[] }
+    >();
+    for (const op of ops) {
+      const key = op.category_id != null ? String(op.category_id) : "__none__";
+      if (!byKey.has(key)) byKey.set(key, { name: null, id: op.category_id, ops: [] });
+      byKey.get(key)!.ops.push(op);
+    }
+    // Resolve category names from already-fetched summary rows.
+    if (summary) {
+      for (const row of summary.rows) {
+        if (row.month !== month || row.type !== type || row.is_planned) continue;
+        const key = row.category_id != null ? String(row.category_id) : "__none__";
+        const g = byKey.get(key);
+        if (g && g.name === null) g.name = row.category_name;
+      }
+    }
+    return [...byKey.values()].sort((a, b) => {
+      const sumA = a.ops.reduce((s, o) => s + Math.abs(o.montant_cents), 0);
+      const sumB = b.ops.reduce((s, o) => s + Math.abs(o.montant_cents), 0);
+      return sumA - sumB;
+    });
+  }, [ops, summary, month, type]);
+
+  const title = `${formatMonth(month)} — ${type === "credit" ? t.bilan.credits : t.bilan.debits}`;
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl flex flex-col max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle
+            style={{ color: type === "credit" ? "var(--credit)" : "var(--debit)" }}
+          >
+            {title}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+          {fetchError && <p className="text-sm text-destructive mb-2">{fetchError}</p>}
+          {groups === null ? (
+            <p className="text-sm text-muted-foreground">{t.common.loading}</p>
+          ) : groups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t.operations.empty}</p>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g) => (
+                <div key={g.id ?? "__none__"}>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1 border-b border-border mb-0.5">
+                    {g.name ?? t.common.noCategory}
+                  </div>
+                  <ul>
+                    {g.ops.map((op) => (
+                      <li
+                        key={op.id}
+                        className="flex items-baseline gap-3 px-1 py-1 text-sm"
+                      >
+                        <span className="text-muted-foreground tabular-nums w-20 shrink-0">
+                          {formatDate(op.date)}
+                        </span>
+                        <span
+                          className={`tabular-nums w-24 text-right shrink-0 font-medium ${
+                            type === "debit" ? "text-debit" : "text-credit"
+                          }`}
+                        >
+                          {formatEuros(op.montant_cents)}
+                        </span>
+                        <span
+                          className="flex-1 truncate"
+                          title={op.libelle}
+                        >
+                          {op.libelle}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function computeKpis(
   summary: BilanSummary | null,
   soldeCents: number,
@@ -549,9 +673,11 @@ type SlotSeries = {
 function BilanChart({
   summary,
   yMaxEuros,
+  onBarClick,
 }: {
   summary: BilanSummary | null;
   yMaxEuros: number | null;
+  onBarClick: (target: { month: string; type: "debit" | "credit" }) => void;
 }) {
   const [hovered, setHovered] = useState<{ month: string; type: "debit" | "credit" } | null>(
     null,
@@ -567,7 +693,9 @@ function BilanChart({
   }
 
   return (
-    <div className="border border-border rounded-md p-3">
+    <div
+      className="border border-border rounded-md p-3"
+    >
       <div className="h-[399px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -596,7 +724,7 @@ function BilanChart({
               allowDataOverflow
             />
             <Tooltip
-              cursor={{ fill: "var(--accent)", opacity: 0.25 }}
+              cursor={{ fill: "var(--accent)", opacity: 0.25, pointerEvents: "none" }}
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length || hoveredStack === null) return null;
                 const month = String(label);
@@ -677,8 +805,6 @@ function BilanChart({
                     hovered !== null &&
                     hovered.month === row.month &&
                     hovered.type === s.type;
-                  // Hovered cells get a dark outline. Non-hovered planned
-                  // cells keep their dashed accent stroke.
                   const stroke = isHovered
                     ? "var(--foreground)"
                     : meta.isPlanned
@@ -699,10 +825,21 @@ function BilanChart({
                       strokeOpacity={strokeOpacity}
                       strokeWidth={strokeWidth}
                       strokeDasharray={strokeDasharray}
+                      style={meta.isPlanned ? undefined : { cursor: "pointer" }}
                       onMouseEnter={() =>
                         setHovered({ month: row.month, type: s.type })
                       }
                       onMouseLeave={() => setHovered(null)}
+                      onClick={
+                        meta.isPlanned
+                          ? undefined
+                          : () => onBarClick({ month: row.month, type: s.type })
+                      }
+                      onMouseDown={
+                        meta.isPlanned
+                          ? undefined
+                          : () => onBarClick({ month: row.month, type: s.type })
+                      }
                     />
                   );
                 })}
