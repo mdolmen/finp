@@ -176,41 +176,58 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
             )
         )
 
-    # Recurring categories: project the most recent realized monthly amount
-    # of each is_recurring=true category onto window months strictly AFTER
-    # the real current month. ``today`` is just the window anchor (shifts
-    # with the chevrons), so we read the system clock here so projection
-    # behaves consistently regardless of how far the user has scrolled.
+    # Recurring operations: project the most recent realized (libelle,
+    # montant_cents) pattern onto future months and the current month.
+    # For the current month, suppress a pattern that already has a real
+    # operation with the same libelle + montant_cents.
+    # ``today`` is the window anchor (shifts with chevrons); we use the
+    # system clock here so projection is consistent regardless of scroll.
     current_month = date.today().strftime("%Y-%m")
-    future_months = [m for m in months if m > current_month]
-    if future_months:
+    forward_months = [m for m in months if m >= current_month]
+    if forward_months:
         recurring_rows = conn.execute(
-            "SELECT c.id, c.name, strftime('%Y-%m', o.date) AS month,"
-            "       SUM(o.montant_cents) AS total_cents, o.type AS type"
-            " FROM categories c"
-            " JOIN operations o ON o.category_id = c.id"
-            " WHERE c.is_recurring = 1"
+            "SELECT o.libelle, o.montant_cents, o.category_id, c.name AS category_name,"
+            "       o.type, strftime('%Y-%m', o.date) AS month"
+            " FROM operations o"
+            " LEFT JOIN categories c ON c.id = o.category_id"
+            " WHERE o.is_recurring = 1"
             "   AND o.type IN ('debit', 'credit')"
             "   AND o.date >= ? AND o.date < ?"
-            " GROUP BY c.id, month, o.type"
-            " ORDER BY c.id, month DESC",
+            " ORDER BY o.date DESC",
             (start, end),
         ).fetchall()
-        # Reduce to one (category, side) pair → most recent month's amount.
-        latest: dict[tuple[int, str, str], int] = {}
+        # One representative per (libelle, montant_cents, type, category_id) —
+        # the most-recent occurrence (rows ordered DESC, first wins).
+        PatternKey = tuple[str, int, str, int | None]
+        latest: dict[PatternKey, dict] = {}
         for r in recurring_rows:
-            key = (r["id"], r["name"], r["type"])
+            key: PatternKey = (r["libelle"], r["montant_cents"], r["type"], r["category_id"])
             if key not in latest:
-                latest[key] = r["total_cents"]
-        for (cat_id, cat_name, side), total_cents in latest.items():
-            for fm in future_months:
+                latest[key] = dict(r)
+
+        # Real operations in the current month: used to suppress projections.
+        current_month_ops = conn.execute(
+            "SELECT libelle, montant_cents FROM operations"
+            " WHERE strftime('%Y-%m', date) = ? AND is_recurring = 0",
+            (current_month,),
+        ).fetchall()
+        current_month_pairs: set[tuple[str, int]] = {
+            (r["libelle"], r["montant_cents"]) for r in current_month_ops
+        }
+
+        for key, r in latest.items():
+            libelle, montant_cents, side, cat_id = key
+            cat_name = r["category_name"]
+            for fm in forward_months:
+                if fm == current_month and (libelle, montant_cents) in current_month_pairs:
+                    continue
                 rows.append(
                     MonthSliceOut(
                         month=fm,
                         type=side,
                         category_id=cat_id,
                         category_name=cat_name,
-                        total_cents=abs(total_cents),
+                        total_cents=abs(montant_cents),
                         is_planned=True,
                     )
                 )
@@ -225,7 +242,7 @@ def _filter_options(conn: sqlite3.Connection, _: EmptyParams) -> FilterOptionsOu
 
     def _categories_for(op_type: str) -> list[CategoryOut]:
         rows = conn.execute(
-            "SELECT DISTINCT c.id, c.name, c.is_builtin, c.display_order, c.is_recurring"
+            "SELECT DISTINCT c.id, c.name, c.is_builtin, c.display_order"
             " FROM categories c JOIN operations o ON o.category_id = c.id"
             " WHERE o.type = ? ORDER BY c.name COLLATE NOCASE",
             (op_type,),
@@ -236,7 +253,6 @@ def _filter_options(conn: sqlite3.Connection, _: EmptyParams) -> FilterOptionsOu
                 name=r["name"],
                 is_builtin=bool(r["is_builtin"]),
                 display_order=r["display_order"],
-                is_recurring=bool(r["is_recurring"]),
             )
             for r in rows
         ]

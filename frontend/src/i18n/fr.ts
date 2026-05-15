@@ -54,6 +54,9 @@ export const fr = {
     filterDebits: "Débits",
     filterCredits: "Crédits",
     filterInternal: "Internes",
+    filterRecurring: "Récurrentes",
+    recurringOn: "Opération récurrente — projetée sur les mois à venir",
+    recurringOff: "Marquer comme récurrente",
     selectAll: "Tout sélectionner",
     selectedCount: "{n} sélectionnée(s)",
     bulkAssign: "Assigner catégorie",
@@ -85,8 +88,6 @@ export const fr = {
     reassignSelect: "Catégorie de destination",
     reassignNone: "Aucune (effacer)",
     reassignConfirm: "Réassigner et supprimer",
-    recurringOn: "Catégorie récurrente — projetée sur les mois à venir",
-    recurringOff: "Marquer comme récurrente",
   },
   regles: {
     title: "Règles",

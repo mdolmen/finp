@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Lock, Pencil, Plus, Repeat, Trash2, X } from "lucide-react";
+import { Check, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -88,14 +88,6 @@ export function CategoriesPage() {
                   cat={cat}
                   onEdit={() => setEditing(cat)}
                   onDelete={() => setDeleteConfirm(cat)}
-                  onToggleRecurring={async () => {
-                    try {
-                      await categoriesApi.setRecurring(cat.id, !cat.is_recurring);
-                      await refresh();
-                    } catch (e) {
-                      setError(formatError(e));
-                    }
-                  }}
                 />
               )}
             </li>
@@ -137,12 +129,10 @@ function CategoryRow({
   cat,
   onEdit,
   onDelete,
-  onToggleRecurring,
 }: {
   cat: Category;
   onEdit: () => void;
   onDelete: () => void;
-  onToggleRecurring: () => void;
 }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 text-sm">
@@ -156,24 +146,6 @@ function CategoryRow({
         </span>
       ) : (
         <>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onToggleRecurring}
-            className={
-              cat.is_recurring
-                ? "text-credit hover:text-credit"
-                : "text-muted-foreground hover:text-foreground"
-            }
-            aria-label={
-              cat.is_recurring ? t.categories.recurringOn : t.categories.recurringOff
-            }
-            title={
-              cat.is_recurring ? t.categories.recurringOn : t.categories.recurringOff
-            }
-          >
-            <Repeat className="size-3.5" />
-          </Button>
           <Button
             size="sm"
             variant="ghost"

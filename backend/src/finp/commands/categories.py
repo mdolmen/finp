@@ -19,7 +19,6 @@ class CategoryOut(BaseModel):
     name: str
     is_builtin: bool
     display_order: int
-    is_recurring: bool
 
 
 class CreateParams(BaseModel):
@@ -44,11 +43,6 @@ class ReassignResult(BaseModel):
     moved: int
 
 
-class SetRecurringParams(BaseModel):
-    id: int
-    is_recurring: bool
-
-
 def _list(conn: sqlite3.Connection, _: EmptyParams) -> list[CategoryOut]:
     return [CategoryOut.model_validate(c) for c in categories.list_all(conn)]
 
@@ -70,17 +64,10 @@ def _reassign(conn: sqlite3.Connection, params: ReassignParams) -> ReassignResul
     return ReassignResult(moved=moved)
 
 
-def _set_recurring(conn: sqlite3.Connection, params: SetRecurringParams) -> CategoryOut:
-    return CategoryOut.model_validate(
-        categories.set_recurring(conn, params.id, params.is_recurring)
-    )
-
-
 METHODS: dict[str, Command] = {
     "categories.list": Command(EmptyParams, _list),
     "categories.create": Command(CreateParams, _create),
     "categories.rename": Command(RenameParams, _rename),
     "categories.delete": Command(IdParams, _delete),
     "categories.reassign_operations": Command(ReassignParams, _reassign),
-    "categories.set_recurring": Command(SetRecurringParams, _set_recurring),
 }

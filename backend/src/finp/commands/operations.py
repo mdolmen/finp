@@ -25,6 +25,7 @@ class OperationOut(BaseModel):
     category_id: int | None
     dedup_hash: str
     created_at: str
+    is_recurring: bool = False
 
 
 class IdParams(BaseModel):
@@ -52,6 +53,11 @@ class BulkAssignResult(BaseModel):
     updated: int
 
 
+class SetRecurringParams(BaseModel):
+    id: int
+    is_recurring: bool
+
+
 class ListParams(BaseModel):
     account_ids: list[int] | None = None
     category_ids: list[int] | None = None
@@ -62,6 +68,7 @@ class ListParams(BaseModel):
     search: str | None = None
     montant_op: Literal[">", "<", "=="] | None = None
     montant_value_cents: int | None = None
+    recurring_only: bool = False
     limit: int | None = None
     offset: int = 0
 
@@ -79,6 +86,12 @@ def _insert(conn: sqlite3.Connection, params: InsertParams) -> OperationOut | No
         libelle=params.libelle,
     )
     return OperationOut.model_validate(op) if op is not None else None
+
+
+def _set_recurring(conn: sqlite3.Connection, params: SetRecurringParams) -> OperationOut:
+    return OperationOut.model_validate(
+        operations.set_recurring(conn, params.id, params.is_recurring)
+    )
 
 
 def _assign_category(conn: sqlite3.Connection, params: AssignCategoryParams) -> OperationOut:
@@ -107,6 +120,7 @@ def _list(conn: sqlite3.Connection, params: ListParams) -> list[OperationOut]:
         date_from=params.date_from,
         date_to=params.date_to,
         search=params.search,
+        recurring_only=params.recurring_only,
         limit=params.limit,
         offset=params.offset,
     )
@@ -117,6 +131,7 @@ METHODS: dict[str, Command] = {
     "operations.get": Command(IdParams, _get),
     "operations.list": Command(ListParams, _list),
     "operations.insert": Command(InsertParams, _insert),
+    "operations.set_recurring": Command(SetRecurringParams, _set_recurring),
     "operations.assign_category": Command(AssignCategoryParams, _assign_category),
     "operations.bulk_assign_category": Command(BulkAssignCategoryParams, _bulk_assign_category),
 }

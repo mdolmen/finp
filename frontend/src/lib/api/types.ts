@@ -21,7 +21,6 @@ export type Category = {
   name: string;
   is_builtin: boolean;
   display_order: number;
-  is_recurring: boolean;
 };
 
 export type Operation = {
@@ -34,6 +33,7 @@ export type Operation = {
   category_id: number | null;
   dedup_hash: string;
   created_at: string;
+  is_recurring: boolean;
 };
 
 export type Predicate =
@@ -60,6 +60,7 @@ export type OperationFilters = {
   search?: string | null;
   montant_op?: ">" | "<" | "==" | null;
   montant_value_cents?: number | null;
+  recurring_only?: boolean;
   limit?: number | null;
   offset?: number;
 };

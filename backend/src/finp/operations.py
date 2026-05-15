@@ -34,6 +34,7 @@ class Operation:
     category_id: int | None
     dedup_hash: str
     created_at: str
+    is_recurring: bool = False
 
 
 def _row_to_op(row: sqlite3.Row) -> Operation:
@@ -47,6 +48,7 @@ def _row_to_op(row: sqlite3.Row) -> Operation:
         category_id=row["category_id"],
         dedup_hash=row["dedup_hash"],
         created_at=row["created_at"],
+        is_recurring=bool(row["is_recurring"]),
     )
 
 
@@ -67,7 +69,7 @@ def find_by_content(
     h = _dedup_hash(account_id, date, montant_cents, libelle)
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at FROM operations WHERE dedup_hash = ?",
+        " dedup_hash, created_at, is_recurring FROM operations WHERE dedup_hash = ?",
         (h,),
     ).fetchone()
     return _row_to_op(row) if row else None
@@ -112,7 +114,7 @@ def get(conn: sqlite3.Connection, op_id: int) -> Operation:
     """Fetch a single operation by id."""
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at FROM operations WHERE id = ?",
+        " dedup_hash, created_at, is_recurring FROM operations WHERE id = ?",
         (op_id,),
     ).fetchone()
     if row is None:
@@ -166,6 +168,15 @@ def _build_fts_query(text: str) -> str:
 _MONTANT_OPS = {">", "<", "=="}
 
 
+def set_recurring(conn: sqlite3.Connection, op_id: int, is_recurring: bool) -> Operation:
+    """Toggle the recurring flag on an operation."""
+    conn.execute(
+        "UPDATE operations SET is_recurring = ? WHERE id = ?",
+        (1 if is_recurring else 0, op_id),
+    )
+    return get(conn, op_id)
+
+
 def list_(
     conn: sqlite3.Connection,
     *,
@@ -178,6 +189,7 @@ def list_(
     search: str | None = None,
     montant_op: str | None = None,
     montant_value_cents: int | None = None,
+    recurring_only: bool = False,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[Operation]:
@@ -228,9 +240,12 @@ def list_(
         where.append(f"ABS(montant_cents) {montant_op} ?")
         params.append(abs(montant_value_cents))
 
+    if recurring_only:
+        where.append("is_recurring = 1")
+
     sql = (
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at FROM operations"
+        " dedup_hash, created_at, is_recurring FROM operations"
     )
     if where:
         sql += " WHERE " + " AND ".join(where)

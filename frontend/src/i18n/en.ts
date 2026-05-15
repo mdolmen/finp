@@ -50,6 +50,9 @@ export const en = {
     filterDebits: "Debits",
     filterCredits: "Credits",
     filterInternal: "Internal",
+    filterRecurring: "Recurring",
+    recurringOn: "Recurring operation — projected across future months",
+    recurringOff: "Mark as recurring",
     selectAll: "Select all",
     selectedCount: "{n} selected",
     bulkAssign: "Assign category",
@@ -81,8 +84,6 @@ export const en = {
     reassignSelect: "Target category",
     reassignNone: "None (clear)",
     reassignConfirm: "Reassign and delete",
-    recurringOn: "Recurring category — projected across future months",
-    recurringOff: "Mark as recurring",
   },
   regles: {
     title: "Rules",

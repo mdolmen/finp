@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Sparkles, X } from "lucide-react";
+import { Repeat, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ type Filters = {
   credit: boolean;
   internal: boolean;
   uncategorizedOnly: boolean;
+  recurringOnly: boolean;
 };
 
 const DEFAULT_FILTERS: Filters = {
@@ -42,6 +43,7 @@ const DEFAULT_FILTERS: Filters = {
   credit: true,
   internal: false,
   uncategorizedOnly: false,
+  recurringOnly: false,
 };
 
 export function OperationsPage() {
@@ -83,6 +85,7 @@ export function OperationsPage() {
         types,
         search: debouncedSearch.trim() || null,
         include_no_category: filters.uncategorizedOnly,
+        recurring_only: filters.recurringOnly,
         category_ids: categoryId !== null ? [categoryId] : null,
         montant_op: montantCents !== null ? montantOp : null,
         montant_value_cents: montantCents,
@@ -94,7 +97,7 @@ export function OperationsPage() {
     } catch (e) {
       setError(formatError(e));
     }
-  }, [types, debouncedSearch, filters.uncategorizedOnly, categoryId, montantOp, montantCents, dateFrom, dateTo]);
+  }, [types, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, categoryId, montantOp, montantCents, dateFrom, dateTo]);
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
@@ -212,6 +215,16 @@ export function OperationsPage() {
             (o) => !filters.uncategorizedOnly || o.category_id === null,
           ) ?? null,
       );
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }
+
+  async function handleToggleRecurring(opId: number, current: boolean) {
+    setError(null);
+    try {
+      const updated = await operationsApi.setRecurring(opId, !current);
+      setOps((prev) => prev?.map((o) => (o.id === opId ? updated : o)) ?? null);
     } catch (e) {
       setError(formatError(e));
     }
@@ -350,6 +363,11 @@ export function OperationsPage() {
           checked={filters.internal}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, internal: v }))}
         />
+        <FilterCheckbox
+          label={t.operations.filterRecurring}
+          checked={filters.recurringOnly}
+          onChange={(v) => setFiltersAndClear((f) => ({ ...f, recurringOnly: v }))}
+        />
         <Select
           value={categoryId !== null ? String(categoryId) : ALL_CATEGORIES}
           onValueChange={(v) => setCategoryIdAndClear(v === ALL_CATEGORIES ? null : Number(v))}
@@ -381,6 +399,7 @@ export function OperationsPage() {
         ops={ops}
         cats={cats}
         onAssign={handleAssign}
+        onToggleRecurring={handleToggleRecurring}
         selected={selected}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
@@ -474,12 +493,13 @@ function FilterCheckbox({
   );
 }
 
-const GRID_COLS = "grid-cols-[28px_100px_120px_1fr_220px]";
+const GRID_COLS = "grid-cols-[28px_100px_120px_1fr_28px_220px]";
 
 function OperationsList({
   ops,
   cats,
   onAssign,
+  onToggleRecurring,
   selected,
   onToggleSelect,
   onToggleSelectAll,
@@ -488,6 +508,7 @@ function OperationsList({
   ops: Operation[] | null;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
+  onToggleRecurring: (opId: number, current: boolean) => void;
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
@@ -508,6 +529,7 @@ function OperationsList({
       ops={ops}
       cats={cats}
       onAssign={onAssign}
+      onToggleRecurring={onToggleRecurring}
       selected={selected}
       onToggleSelect={onToggleSelect}
       bottomBarVisible={bottomBarVisible}
@@ -526,6 +548,7 @@ function OperationsList({
           <div>{t.operations.columnDate}</div>
           <div className="text-right">{t.operations.columnMontant}</div>
           <div>{t.operations.columnLibelle}</div>
+          <div />
           <div>{t.operations.columnCategory}</div>
         </div>
       }
@@ -537,6 +560,7 @@ function VirtualizedList({
   ops,
   cats,
   onAssign,
+  onToggleRecurring,
   selected,
   onToggleSelect,
   bottomBarVisible,
@@ -545,6 +569,7 @@ function VirtualizedList({
   ops: Operation[];
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
+  onToggleRecurring: (opId: number, current: boolean) => void;
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
   bottomBarVisible: boolean;
@@ -587,6 +612,7 @@ function VirtualizedList({
                   op={op}
                   cats={cats}
                   onAssign={onAssign}
+                  onToggleRecurring={onToggleRecurring}
                   selected={selected.has(op.id)}
                   onToggle={(checked) => onToggleSelect(op.id, checked)}
                 />
@@ -603,12 +629,14 @@ function OperationRow({
   op,
   cats,
   onAssign,
+  onToggleRecurring,
   selected,
   onToggle,
 }: {
   op: Operation;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
+  onToggleRecurring: (opId: number, current: boolean) => void;
   selected: boolean;
   onToggle: (checked: boolean) => void;
 }) {
@@ -643,6 +671,20 @@ function OperationRow({
       <div className="truncate" title={op.libelle}>
         {op.libelle}
       </div>
+      <button
+        type="button"
+        onClick={() => onToggleRecurring(op.id, op.is_recurring)}
+        className={cn(
+          "flex items-center justify-center size-6 rounded-sm transition-colors",
+          op.is_recurring
+            ? "text-credit"
+            : "text-muted-foreground/40 hover:text-muted-foreground",
+        )}
+        aria-label={op.is_recurring ? t.operations.recurringOn : t.operations.recurringOff}
+        title={op.is_recurring ? t.operations.recurringOn : t.operations.recurringOff}
+      >
+        <Repeat className="size-3.5" />
+      </button>
       <div>
         <Select value={value} onValueChange={(v) => onAssign(op.id, v)}>
           <SelectTrigger className="h-7 w-full text-xs">
