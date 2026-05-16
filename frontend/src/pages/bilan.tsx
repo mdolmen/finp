@@ -825,21 +825,13 @@ function BilanChart({
                       strokeOpacity={strokeOpacity}
                       strokeWidth={strokeWidth}
                       strokeDasharray={strokeDasharray}
-                      style={meta.isPlanned ? undefined : { cursor: "pointer" }}
+                      style={{ cursor: "pointer" }}
                       onMouseEnter={() =>
                         setHovered({ month: row.month, type: s.type })
                       }
                       onMouseLeave={() => setHovered(null)}
-                      onClick={
-                        meta.isPlanned
-                          ? undefined
-                          : () => onBarClick({ month: row.month, type: s.type })
-                      }
-                      onMouseDown={
-                        meta.isPlanned
-                          ? undefined
-                          : () => onBarClick({ month: row.month, type: s.type })
-                      }
+                      onClick={() => onBarClick({ month: row.month, type: s.type })}
+                      onMouseDown={() => onBarClick({ month: row.month, type: s.type })}
                     />
                   );
                 })}
