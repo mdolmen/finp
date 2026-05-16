@@ -37,6 +37,7 @@ export const fr = {
     plannedFieldMontant: "Montant (€)",
     plannedFieldLibelle: "Libellé",
     plannedConfirmDelete: "Supprimer l'opération prévue « {name} » ?",
+    attendues: "Attendues",
     shiftEarlier: "Mois précédent",
     shiftLater: "Mois suivant",
   },

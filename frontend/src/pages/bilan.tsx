@@ -910,14 +910,31 @@ function shapeChartData(summary: BilanSummary | null): {
   const perMonth = new Map<string, { debit: Entry[]; credit: Entry[] }>();
   for (const m of summary.months) perMonth.set(m, { debit: [], credit: [] });
 
+  // Planned rows are consolidated into a single "Attendues" block per month/type.
+  const plannedTotals = new Map<string, number>(); // key: `${month}|${type}`
   for (const row of summary.rows) {
     const bucket = perMonth.get(row.month);
     if (!bucket) continue;
-    const list = row.type === "debit" ? bucket.debit : bucket.credit;
-    list.push({
-      name: row.category_name ?? t.common.noCategory,
-      valueEuros: Math.abs(row.total_cents) / 100,
-      isPlanned: row.is_planned,
+    if (row.is_planned) {
+      const key = `${row.month}|${row.type}`;
+      plannedTotals.set(key, (plannedTotals.get(key) ?? 0) + Math.abs(row.total_cents) / 100);
+    } else {
+      const list = row.type === "debit" ? bucket.debit : bucket.credit;
+      list.push({
+        name: row.category_name ?? t.common.noCategory,
+        valueEuros: Math.abs(row.total_cents) / 100,
+        isPlanned: false,
+      });
+    }
+  }
+  for (const [key, valueEuros] of plannedTotals) {
+    const [month, type] = key.split("|") as [string, "debit" | "credit"];
+    const bucket = perMonth.get(month);
+    if (!bucket) continue;
+    (type === "debit" ? bucket.debit : bucket.credit).push({
+      name: t.bilan.attendues,
+      valueEuros,
+      isPlanned: true,
     });
   }
 
