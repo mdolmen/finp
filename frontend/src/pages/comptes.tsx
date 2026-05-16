@@ -205,7 +205,7 @@ function AddAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t.comptes.addTitle}</DialogTitle>
           <DialogDescription>{t.comptes.addDescription}</DialogDescription>
@@ -280,7 +280,7 @@ function AccountSettingsDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>
             {t.comptes.settingsTitle.replace("{name}", account.name)}

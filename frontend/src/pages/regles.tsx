@@ -418,7 +418,7 @@ function RuleFormDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{isEdit ? t.regles.editTitle : t.regles.addTitle}</DialogTitle>
           <DialogDescription>

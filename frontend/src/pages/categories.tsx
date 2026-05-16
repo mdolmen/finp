@@ -262,7 +262,7 @@ function AddCategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t.categories.addTitle}</DialogTitle>
           <DialogDescription>{t.categories.addDescription}</DialogDescription>
@@ -328,7 +328,7 @@ function ReassignDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t.categories.reassignTitle}</DialogTitle>
           <DialogDescription>{t.categories.reassignBody}</DialogDescription>

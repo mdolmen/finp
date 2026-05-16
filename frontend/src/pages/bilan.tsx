@@ -408,7 +408,7 @@ function AddPlannedDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && !submitting && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t.bilan.plannedAddTitle}</DialogTitle>
           <DialogDescription>{t.bilan.plannedAddDescription}</DialogDescription>
@@ -528,7 +528,7 @@ function DrilldownModal({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-4xl flex flex-col max-h-[80vh]">
+      <DialogContent className="max-w-3xl flex flex-col max-h-[80vh]">
         <DialogHeader>
           <DialogTitle
             style={{ color: type === "credit" ? "var(--credit)" : "var(--debit)" }}
