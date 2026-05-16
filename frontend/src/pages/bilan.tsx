@@ -485,7 +485,7 @@ function DrilldownModal({
       .catch((e) => setFetchError(e instanceof RpcError ? e.message : String(e)));
   }, [month, type, dateFrom, dateTo]);
 
-  // Group ops by category, sorted desc by group total — same order as the chart.
+  // Group real ops by category, sorted ascending by group total.
   const groups = useMemo(() => {
     if (!ops) return null;
     const byKey = new Map<
@@ -513,7 +513,18 @@ function DrilldownModal({
     });
   }, [ops, summary, month, type]);
 
+  // Planned rows for this month/type from the summary (recurring + manual planned ops).
+  const plannedRows = useMemo(
+    () =>
+      (summary?.rows ?? [])
+        .filter((r) => r.month === month && r.type === type && r.is_planned)
+        .sort((a, b) => a.total_cents - b.total_cents),
+    [summary, month, type],
+  );
+
   const title = `${formatMonth(month)} — ${type === "credit" ? t.bilan.credits : t.bilan.debits}`;
+  const hasReal = groups !== null && groups.length > 0;
+  const hasPlanned = plannedRows.length > 0;
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
@@ -525,47 +536,73 @@ function DrilldownModal({
             {title}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4">
           {fetchError && <p className="text-sm text-destructive mb-2">{fetchError}</p>}
           {groups === null ? (
             <p className="text-sm text-muted-foreground">{t.common.loading}</p>
-          ) : groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t.operations.empty}</p>
           ) : (
-            <div className="space-y-3">
-              {groups.map((g) => (
-                <div key={g.id ?? "__none__"}>
+            <>
+              {hasReal && (
+                <div className="space-y-3">
+                  {groups.map((g) => (
+                    <div key={g.id ?? "__none__"}>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1 border-b border-border mb-0.5">
+                        {g.name ?? t.common.noCategory}
+                      </div>
+                      <ul>
+                        {g.ops.map((op) => (
+                          <li
+                            key={op.id}
+                            className="flex items-baseline gap-3 px-1 py-1 text-sm"
+                          >
+                            <span className="text-muted-foreground tabular-nums w-20 shrink-0">
+                              {formatDate(op.date)}
+                            </span>
+                            <span
+                              className={`tabular-nums w-24 text-right shrink-0 font-medium ${
+                                type === "debit" ? "text-debit" : "text-credit"
+                              }`}
+                            >
+                              {formatEuros(op.montant_cents)}
+                            </span>
+                            <span className="flex-1 truncate" title={op.libelle}>
+                              {op.libelle}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {hasPlanned && (
+                <div>
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 pb-1 border-b border-border mb-0.5">
-                    {g.name ?? t.common.noCategory}
+                    {t.bilan.attendues}
                   </div>
                   <ul>
-                    {g.ops.map((op) => (
-                      <li
-                        key={op.id}
-                        className="flex items-baseline gap-3 px-1 py-1 text-sm"
-                      >
-                        <span className="text-muted-foreground tabular-nums w-20 shrink-0">
-                          {formatDate(op.date)}
-                        </span>
+                    {plannedRows.map((r, i) => (
+                      <li key={i} className="flex items-baseline gap-3 px-1 py-1 text-sm">
+                        <span className="text-muted-foreground w-20 shrink-0" />
                         <span
                           className={`tabular-nums w-24 text-right shrink-0 font-medium ${
                             type === "debit" ? "text-debit" : "text-credit"
                           }`}
                         >
-                          {formatEuros(op.montant_cents)}
+                          {formatEuros(r.total_cents)}
                         </span>
-                        <span
-                          className="flex-1 truncate"
-                          title={op.libelle}
-                        >
-                          {op.libelle}
+                        <span className="flex-1 truncate text-muted-foreground" title={r.libelle ?? undefined}>
+                          {r.libelle ?? r.category_name ?? t.common.noCategory}
                         </span>
                       </li>
                     ))}
                   </ul>
                 </div>
-              ))}
-            </div>
+              )}
+              {!hasReal && !hasPlanned && (
+                <p className="text-sm text-muted-foreground">{t.operations.empty}</p>
+              )}
+            </>
           )}
         </div>
       </DialogContent>

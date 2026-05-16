@@ -78,6 +78,7 @@ class MonthSliceOut(BaseModel):
     category_name: str | None
     total_cents: int
     is_planned: bool = False
+    libelle: str | None = None  # set for planned rows only
 
 
 class SummaryParams(BaseModel):
@@ -157,22 +158,18 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
     from finp import planned_operations as planned
 
     planned_rows = planned.list_in_range(conn, start, end)
-    planned_by_key: dict[tuple[str, str], int] = {}
     for p in planned_rows:
         month_key = p.date[:7]
         side = "debit" if p.montant_cents < 0 else "credit"
-        planned_by_key[(month_key, side)] = planned_by_key.get((month_key, side), 0) + abs(
-            p.montant_cents
-        )
-    for (month_key, side), total in planned_by_key.items():
         rows.append(
             MonthSliceOut(
                 month=month_key,
                 type=side,
                 category_id=None,
-                category_name="Opérations prévues",
-                total_cents=total,
+                category_name=None,
+                total_cents=abs(p.montant_cents),
                 is_planned=True,
+                libelle=p.libelle,
             )
         )
 
@@ -233,6 +230,7 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
                         category_name=cat_name,
                         total_cents=abs(montant_cents),
                         is_planned=True,
+                        libelle=libelle,
                     )
                 )
 

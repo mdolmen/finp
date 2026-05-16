@@ -8,6 +8,7 @@ export type MonthSlice = {
   category_name: string | null;
   total_cents: number;
   is_planned: boolean;
+  libelle: string | null;
 };
 
 export type BilanSummary = {
