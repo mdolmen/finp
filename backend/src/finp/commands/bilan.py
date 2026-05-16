@@ -193,9 +193,7 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
             " LEFT JOIN categories c ON c.id = o.category_id"
             " WHERE o.recurring != 'none'"
             "   AND o.type IN ('debit', 'credit')"
-            "   AND o.date >= ? AND o.date < ?"
             " ORDER BY o.date DESC",
-            (start, end),
         ).fetchall()
         # One representative per (libelle, montant_cents, type, category_id) —
         # the most-recent occurrence (rows ordered DESC, first wins).
