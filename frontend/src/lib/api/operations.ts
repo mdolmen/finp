@@ -18,6 +18,6 @@ export const operationsApi = {
       ids,
       category_id: categoryId,
     }),
-  setRecurring: (id: number, isRecurring: boolean) =>
-    rpc<Operation>("operations.set_recurring", { id, is_recurring: isRecurring }),
+  setRecurring: (id: number, recurring: "none" | "monthly" | "yearly") =>
+    rpc<Operation>("operations.set_recurring", { id, recurring }),
 };

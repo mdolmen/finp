@@ -25,7 +25,7 @@ class OperationOut(BaseModel):
     category_id: int | None
     dedup_hash: str
     created_at: str
-    is_recurring: bool = False
+    recurring: str = "none"
 
 
 class IdParams(BaseModel):
@@ -55,7 +55,7 @@ class BulkAssignResult(BaseModel):
 
 class SetRecurringParams(BaseModel):
     id: int
-    is_recurring: bool
+    recurring: str
 
 
 class ListParams(BaseModel):
@@ -90,7 +90,7 @@ def _insert(conn: sqlite3.Connection, params: InsertParams) -> OperationOut | No
 
 def _set_recurring(conn: sqlite3.Connection, params: SetRecurringParams) -> OperationOut:
     return OperationOut.model_validate(
-        operations.set_recurring(conn, params.id, params.is_recurring)
+        operations.set_recurring(conn, params.id, params.recurring)
     )
 
 

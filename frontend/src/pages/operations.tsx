@@ -220,10 +220,11 @@ export function OperationsPage() {
     }
   }
 
-  async function handleToggleRecurring(opId: number, current: boolean) {
+  async function handleCycleRecurring(opId: number, current: "none" | "monthly" | "yearly") {
+    const next = current === "none" ? "monthly" : current === "monthly" ? "yearly" : "none";
     setError(null);
     try {
-      const updated = await operationsApi.setRecurring(opId, !current);
+      const updated = await operationsApi.setRecurring(opId, next);
       setOps((prev) => prev?.map((o) => (o.id === opId ? updated : o)) ?? null);
     } catch (e) {
       setError(formatError(e));
@@ -399,7 +400,7 @@ export function OperationsPage() {
         ops={ops}
         cats={cats}
         onAssign={handleAssign}
-        onToggleRecurring={handleToggleRecurring}
+        onToggleRecurring={handleCycleRecurring}
         selected={selected}
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
@@ -508,7 +509,7 @@ function OperationsList({
   ops: Operation[] | null;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
-  onToggleRecurring: (opId: number, current: boolean) => void;
+  onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
@@ -569,7 +570,7 @@ function VirtualizedList({
   ops: Operation[];
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
-  onToggleRecurring: (opId: number, current: boolean) => void;
+  onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: Set<number>;
   onToggleSelect: (opId: number, checked: boolean) => void;
   bottomBarVisible: boolean;
@@ -636,7 +637,7 @@ function OperationRow({
   op: Operation;
   cats: Category[];
   onAssign: (opId: number, value: string) => void;
-  onToggleRecurring: (opId: number, current: boolean) => void;
+  onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: boolean;
   onToggle: (checked: boolean) => void;
 }) {
@@ -673,17 +674,34 @@ function OperationRow({
       </div>
       <button
         type="button"
-        onClick={() => onToggleRecurring(op.id, op.is_recurring)}
+        onClick={() => onToggleRecurring(op.id, op.recurring)}
         className={cn(
-          "flex items-center justify-center size-6 rounded-sm transition-colors",
-          op.is_recurring
+          "relative flex items-center justify-center size-6 rounded-sm transition-colors",
+          op.recurring !== "none"
             ? "text-credit"
             : "text-muted-foreground/40 hover:text-muted-foreground",
         )}
-        aria-label={op.is_recurring ? t.operations.recurringOn : t.operations.recurringOff}
-        title={op.is_recurring ? t.operations.recurringOn : t.operations.recurringOff}
+        aria-label={
+          op.recurring === "monthly"
+            ? t.operations.recurringMonthly
+            : op.recurring === "yearly"
+              ? t.operations.recurringYearly
+              : t.operations.recurringOff
+        }
+        title={
+          op.recurring === "monthly"
+            ? t.operations.recurringMonthly
+            : op.recurring === "yearly"
+              ? t.operations.recurringYearly
+              : t.operations.recurringOff
+        }
       >
         <Repeat className="size-3.5" />
+        {op.recurring !== "none" && (
+          <span className="absolute -top-1 -right-1 text-[7px] font-bold leading-none bg-credit text-white rounded-full w-3 h-3 flex items-center justify-center">
+            {op.recurring === "monthly" ? "M" : "Y"}
+          </span>
+        )}
       </button>
       <div>
         <Select value={value} onValueChange={(v) => onAssign(op.id, v)}>

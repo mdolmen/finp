@@ -187,10 +187,11 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
     if forward_months:
         recurring_rows = conn.execute(
             "SELECT o.libelle, o.montant_cents, o.category_id, c.name AS category_name,"
-            "       o.type, strftime('%Y-%m', o.date) AS month"
+            "       o.type, o.recurring, strftime('%Y-%m', o.date) AS op_month,"
+            "       strftime('%m', o.date) AS op_month_num"
             " FROM operations o"
             " LEFT JOIN categories c ON c.id = o.category_id"
-            " WHERE o.is_recurring = 1"
+            " WHERE o.recurring != 'none'"
             "   AND o.type IN ('debit', 'credit')"
             "   AND o.date >= ? AND o.date < ?"
             " ORDER BY o.date DESC",
@@ -208,7 +209,7 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
         # Real operations in the current month: used to suppress projections.
         current_month_ops = conn.execute(
             "SELECT libelle, montant_cents FROM operations"
-            " WHERE strftime('%Y-%m', date) = ? AND is_recurring = 0",
+            " WHERE strftime('%Y-%m', date) = ? AND recurring = 'none'",
             (current_month,),
         ).fetchall()
         current_month_pairs: set[tuple[str, int]] = {
@@ -218,7 +219,12 @@ def _summary(conn: sqlite3.Connection, params: SummaryParams) -> SummaryOut:
         for key, r in latest.items():
             libelle, montant_cents, side, cat_id = key
             cat_name = r["category_name"]
+            cadence: str = r["recurring"]
+            source_month_num: str = r["op_month_num"]  # e.g. "03"
             for fm in forward_months:
+                # Yearly: only project in the same calendar month as the source op.
+                if cadence == "yearly" and fm[5:7] != source_month_num:
+                    continue
                 if fm == current_month and (libelle, montant_cents) in current_month_pairs:
                     continue
                 rows.append(

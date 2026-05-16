@@ -33,7 +33,7 @@ export type Operation = {
   category_id: number | null;
   dedup_hash: string;
   created_at: string;
-  is_recurring: boolean;
+  recurring: "none" | "monthly" | "yearly";
 };
 
 export type Predicate =

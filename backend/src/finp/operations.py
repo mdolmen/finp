@@ -34,7 +34,7 @@ class Operation:
     category_id: int | None
     dedup_hash: str
     created_at: str
-    is_recurring: bool = False
+    recurring: str = "none"  # 'none' | 'monthly' | 'yearly'
 
 
 def _row_to_op(row: sqlite3.Row) -> Operation:
@@ -48,7 +48,7 @@ def _row_to_op(row: sqlite3.Row) -> Operation:
         category_id=row["category_id"],
         dedup_hash=row["dedup_hash"],
         created_at=row["created_at"],
-        is_recurring=bool(row["is_recurring"]),
+        recurring=row["recurring"],
     )
 
 
@@ -69,7 +69,7 @@ def find_by_content(
     h = _dedup_hash(account_id, date, montant_cents, libelle)
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, is_recurring FROM operations WHERE dedup_hash = ?",
+        " dedup_hash, created_at, recurring FROM operations WHERE dedup_hash = ?",
         (h,),
     ).fetchone()
     return _row_to_op(row) if row else None
@@ -114,7 +114,7 @@ def get(conn: sqlite3.Connection, op_id: int) -> Operation:
     """Fetch a single operation by id."""
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, is_recurring FROM operations WHERE id = ?",
+        " dedup_hash, created_at, recurring FROM operations WHERE id = ?",
         (op_id,),
     ).fetchone()
     if row is None:
@@ -168,11 +168,16 @@ def _build_fts_query(text: str) -> str:
 _MONTANT_OPS = {">", "<", "=="}
 
 
-def set_recurring(conn: sqlite3.Connection, op_id: int, is_recurring: bool) -> Operation:
-    """Toggle the recurring flag on an operation."""
+_VALID_RECURRING = {"none", "monthly", "yearly"}
+
+
+def set_recurring(conn: sqlite3.Connection, op_id: int, recurring: str) -> Operation:
+    """Set the recurring cadence on an operation."""
+    if recurring not in _VALID_RECURRING:
+        raise ValueError(f"invalid recurring value: {recurring!r}")
     conn.execute(
-        "UPDATE operations SET is_recurring = ? WHERE id = ?",
-        (1 if is_recurring else 0, op_id),
+        "UPDATE operations SET recurring = ? WHERE id = ?",
+        (recurring, op_id),
     )
     return get(conn, op_id)
 
@@ -241,11 +246,11 @@ def list_(
         params.append(abs(montant_value_cents))
 
     if recurring_only:
-        where.append("is_recurring = 1")
+        where.append("recurring != 'none'")
 
     sql = (
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, is_recurring FROM operations"
+        " dedup_hash, created_at, recurring FROM operations"
     )
     if where:
         sql += " WHERE " + " AND ".join(where)
