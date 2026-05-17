@@ -81,9 +81,10 @@ const CHARSET_OPTIONS: { value: Charset; label: string }[] = [
   { value: "iso-8859-3", label: "ISO-8859-3 (Latin-3)" },
 ];
 
-const DELIMITER_OPTIONS: { value: "," | ";"; label: string }[] = [
+const DELIMITER_OPTIONS: { value: "," | ";" | "\t"; label: string }[] = [
   { value: ",", label: ", (virgule)" },
   { value: ";", label: "; (point-virgule)" },
+  { value: "\t", label: "↹ (tabulation)" },
 ];
 
 const MONTANT_MODE_OPTIONS: { value: MontantMode; label: string }[] = [
@@ -272,7 +273,7 @@ function MappingStep({
   // happens to be on (older mappings predate the mode flag — default to single).
   const savedAny = saved as Partial<{
     charset: Charset;
-    delimiter: "," | ";";
+    delimiter: "," | ";" | "\t";
     date_column: string;
     date_format: DateFormat;
     montant_decimal: DecimalSeparator;
@@ -284,7 +285,7 @@ function MappingStep({
   }>;
 
   const [charset, setCharset] = useState<Charset>(savedAny.charset ?? "utf-8");
-  const [delimiter, setDelimiter] = useState<"," | ";">(savedAny.delimiter ?? ",");
+  const [delimiter, setDelimiter] = useState<"," | ";" | "\t">(savedAny.delimiter ?? ",");
   const [dateFormat, setDateFormat] = useState<DateFormat>(savedAny.date_format ?? "dmy_slash");
   const [decimal, setDecimal] = useState<DecimalSeparator>(savedAny.montant_decimal ?? ",");
   const [dateColumn, setDateColumn] = useState(savedAny.date_column ?? "");
@@ -418,7 +419,7 @@ function MappingStep({
           label={t.import.fieldDelimiter}
           value={delimiter}
           options={DELIMITER_OPTIONS}
-          onChange={(v) => setDelimiter(v as "," | ";")}
+          onChange={(v) => setDelimiter(v as "," | ";" | "\t")}
         />
         <ColumnPicker
           label={t.import.fieldDate}
@@ -743,7 +744,14 @@ function SelectField<T extends string>({
   );
 }
 
-function guessDelimiter(text: string): "," | ";" {
+function guessDelimiter(text: string): "," | ";" | "\t" {
   const sample = text.slice(0, 1000);
-  return (sample.match(/;/g)?.length ?? 0) > (sample.match(/,/g)?.length ?? 0) ? ";" : ",";
+  const counts = {
+    "\t": sample.match(/\t/g)?.length ?? 0,
+    ";": sample.match(/;/g)?.length ?? 0,
+    ",": sample.match(/,/g)?.length ?? 0,
+  };
+  return (Object.entries(counts) as [("," | ";" | "\t"), number][]).reduce((a, b) =>
+    b[1] > a[1] ? b : a,
+  )[0];
 }

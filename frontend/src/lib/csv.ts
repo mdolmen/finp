@@ -17,7 +17,7 @@ export type MontantMode = "single" | "split";
 
 type BaseMapping = {
   charset: Charset;
-  delimiter: "," | ";";
+  delimiter: "," | ";" | "\t";
   has_header: true;
   date_column: string;
   date_format: DateFormat;
