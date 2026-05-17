@@ -1,4 +1,4 @@
-.PHONY: check lint test build dev install-hooks
+.PHONY: check lint test e2e build dev install-hooks
 
 # Full CI gate: lint → tests → frontend build
 check: lint test
@@ -12,6 +12,10 @@ lint:
 
 test:
 	cd backend && uv run pytest
+
+# E2E tests — separate from check (too slow for pre-commit)
+e2e:
+	cd frontend && pnpm e2e
 
 build:
 	pnpm tauri build
