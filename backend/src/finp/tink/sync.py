@@ -35,9 +35,7 @@ def _libelle(descriptions: dict) -> str:
     return (descriptions.get("display") or descriptions.get("original") or "").strip() or "—"
 
 
-def _fetch_all(
-    access_token: str, tink_account_id: str, *, date_from: str | None
-) -> list[dict]:
+def _fetch_all(access_token: str, tink_account_id: str, *, date_from: str | None) -> list[dict]:
     """Paginate through all pages of BOOKED transactions."""
     txns: list[dict] = []
     page_token: str | None = None
@@ -88,11 +86,15 @@ def sync_account(conn: sqlite3.Connection, account_id: int) -> dict:
     try:
         txns = _fetch_all(access_token, tink_account_id, date_from=date_from)
     except httpx.HTTPStatusError as exc:
-        log.error("sync_account fetch failed: status=%d body=%s",
-                  exc.response.status_code, exc.response.text[:500])
+        log.error(
+            "sync_account fetch failed: status=%d body=%s",
+            exc.response.status_code,
+            exc.response.text[:500],
+        )
         raise AppError(
             "tink.sync_failed",
-            f"Tink transactions fetch failed ({exc.response.status_code}): {exc.response.text[:200]}",
+            f"Tink transactions fetch failed ({exc.response.status_code}):"
+            f" {exc.response.text[:200]}",
         ) from exc
 
     imported = 0

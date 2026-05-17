@@ -39,6 +39,7 @@ export function CategoriesPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -239,6 +240,7 @@ function AddCategoryDialog({
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName("");
       setError(null);
       setSubmitting(false);

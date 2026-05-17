@@ -73,6 +73,7 @@ export function BilanPage() {
       .list()
       .then(setAccountsList)
       .catch((e) => setError(formatError(e)));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshPlanned();
   }, [refreshPlanned]);
 
@@ -114,6 +115,7 @@ export function BilanPage() {
   // but visually checking everything makes the implicit-default explicit.
   useEffect(() => {
     if (!options) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccountIds(options.accounts.map((a) => a.id));
     const debitAll = options.debit_categories.map((c) => c.id);
     if (options.debit_has_uncategorized) debitAll.push(NO_CATEGORY_SENTINEL);
@@ -481,7 +483,7 @@ function DrilldownModal({
   useEffect(() => {
     operationsApi
       .list({ types: [type], date_from: dateFrom, date_to: dateTo, limit: 500 })
-      .then(setOps)
+      .then((r) => setOps(r.items))
       .catch((e) => setFetchError(e instanceof RpcError ? e.message : String(e)));
   }, [month, type, dateFrom, dateTo]);
 

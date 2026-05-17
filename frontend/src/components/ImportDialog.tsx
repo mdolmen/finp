@@ -107,6 +107,7 @@ export function ImportDialog({
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStep({ kind: "pick" });
       setError(null);
     }
@@ -316,6 +317,7 @@ function MappingStep({
   // Sync the auto-guessed delimiter into local state on first parse.
   useEffect(() => {
     if (!saved.delimiter && parsed.effectiveDelimiter !== delimiter) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDelimiter(parsed.effectiveDelimiter);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,6 +328,7 @@ function MappingStep({
   useEffect(() => {
     const cols = parsed.columns;
     if (cols.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!dateColumn || !cols.includes(dateColumn)) setDateColumn(cols[0] ?? "");
     if (!libelleColumn || !cols.includes(libelleColumn)) {
       setLibelleColumn(cols[2] ?? cols[0] ?? "");

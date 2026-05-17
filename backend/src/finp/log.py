@@ -33,9 +33,7 @@ def setup(level: int = logging.DEBUG) -> None:
     handler = logging.handlers.RotatingFileHandler(
         path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8"
     )
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s"))
     root = logging.getLogger()
     root.setLevel(level)
     if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers):

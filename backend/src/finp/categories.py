@@ -75,8 +75,7 @@ def get_by_name(conn: sqlite3.Connection, name: str) -> Category | None:
 def list_all(conn: sqlite3.Connection) -> list[Category]:
     """Return all categories ordered alphabetically (case-insensitive)."""
     rows = conn.execute(
-        "SELECT id, name, is_builtin, display_order FROM categories"
-        " ORDER BY name COLLATE NOCASE"
+        "SELECT id, name, is_builtin, display_order FROM categories ORDER BY name COLLATE NOCASE"
     ).fetchall()
     return [_row_to_category(r) for r in rows]
 

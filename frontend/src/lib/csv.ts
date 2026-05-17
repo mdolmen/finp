@@ -46,7 +46,7 @@ export function parseDate(input: string, format: DateFormat): string {
     if (!match) throw new Error(`date "${input}" ne correspond pas à AAAA-MM-JJ`);
     [, y, m, d] = match;
   } else {
-    const match = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(s);
+    const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/.exec(s);
     if (!match) throw new Error(`date "${input}" attendue au format JJ/MM/AAAA`);
     if (format === "dmy_slash") {
       [, d, m, y] = match;
@@ -64,6 +64,7 @@ export function parseDate(input: string, format: DateFormat): string {
 
 export function parseMontantCents(input: string, decimal: DecimalSeparator): number {
   // Strip ASCII spaces, NBSP (U+00A0), narrow NBSP (U+202F), thin space (U+2009).
+  // eslint-disable-next-line no-irregular-whitespace
   const cleaned = input.replace(/[    ]/g, "");
   if (!cleaned) throw new Error("montant vide");
 

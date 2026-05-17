@@ -128,6 +128,7 @@ export function OperationsPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -609,6 +610,7 @@ function VirtualizedList({
   header: React.ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: ops.length,
     getScrollElement: () => scrollRef.current,
@@ -770,6 +772,7 @@ function formatError(e: unknown): string {
 // Accepts "1234,56", "1234.56", or "1 234,56". Returns null when the input
 // can't be parsed — including the empty string, which means "no filter".
 function parseEurosToCents(input: string): number | null {
+  // eslint-disable-next-line no-irregular-whitespace
   const cleaned = input.replace(/[\s   ]/g, "").replace(",", ".");
   if (!cleaned) return null;
   const value = Number(cleaned);

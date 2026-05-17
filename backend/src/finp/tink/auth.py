@@ -73,18 +73,13 @@ def _extract_user_id(access_token: str) -> str:
 
 def _store_tokens(conn: sqlite3.Connection, token_data: dict) -> str:
     """Persist token data; returns the tink_user_id used."""
-    tink_user_id = token_data.get("tink_user_id") or _extract_user_id(
-        token_data["access_token"]
-    )
+    tink_user_id = token_data.get("tink_user_id") or _extract_user_id(token_data["access_token"])
     expires_at = (
-        datetime.now(UTC)
-        + timedelta(seconds=int(token_data.get("expires_in", 3600)))
+        datetime.now(UTC) + timedelta(seconds=int(token_data.get("expires_in", 3600)))
     ).isoformat()
     # Keep only one token row — each new OAuth may produce a different tink_user_id,
     # so a plain UPSERT would accumulate stale rows. Delete first.
-    conn.execute(
-        "DELETE FROM tink_tokens WHERE tink_user_id != ?", (tink_user_id,)
-    )
+    conn.execute("DELETE FROM tink_tokens WHERE tink_user_id != ?", (tink_user_id,))
     conn.execute(
         """
         INSERT INTO tink_tokens
@@ -131,9 +126,7 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
         code = (params.get("code") or [None])[0]
         state = (params.get("state") or [None])[0]
         # Tink returns credentialsId (camelCase) and credentials_id (snake) — take either.
-        credentials_id = (
-            (params.get("credentialsId") or params.get("credentials_id") or [""])[0]
-        )
+        credentials_id = (params.get("credentialsId") or params.get("credentials_id") or [""])[0]
 
         with _sessions_lock:
             session = _sessions.get(state) if state else None
@@ -151,8 +144,12 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
                 code,
                 session["redirect_uri"],
             )
-            log.info("exchange_code success: expires_in=%r has_refresh_token=%r credentials_id=%r",
-                     token_data.get("expires_in"), bool(token_data.get("refresh_token")), credentials_id)
+            log.info(
+                "exchange_code success: expires_in=%r has_refresh_token=%r credentials_id=%r",
+                token_data.get("expires_in"),
+                bool(token_data.get("refresh_token")),
+                credentials_id,
+            )
             conn = connect(_db_path())
             tink_user_id = _store_tokens(conn, {**token_data, "credentials_id": credentials_id})
             conn.close()
@@ -243,19 +240,28 @@ def refresh_token_if_needed(
     expires_at = datetime.fromisoformat(row["expires_at"])
     now = datetime.now(UTC)
     remaining = expires_at - now
-    log.debug("token check: tink_user_id=%r expires_at=%s now=%s remaining=%s",
-              tink_user_id, expires_at.isoformat(), now.isoformat(), remaining)
+    log.debug(
+        "token check: tink_user_id=%r expires_at=%s now=%s remaining=%s",
+        tink_user_id,
+        expires_at.isoformat(),
+        now.isoformat(),
+        remaining,
+    )
 
     if remaining > timedelta(minutes=5):
         log.debug("token valid (%.0f min remaining)", remaining.total_seconds() / 60)
         return row["access_token"]
 
     if not row["refresh_token"]:
-        log.warning("token near-expiry/expired and no refresh_token stored; expires_at=%s now=%s",
-                    expires_at.isoformat(), now.isoformat())
+        log.warning(
+            "token near-expiry/expired and no refresh_token stored; expires_at=%s now=%s",
+            expires_at.isoformat(),
+            now.isoformat(),
+        )
         raise AppError(
             "tink.reauth_required",
-            f"Tink token expired (expires_at={expires_at.isoformat()}, remaining={remaining}). Please reconnect.",
+            f"Tink token expired (expires_at={expires_at.isoformat()},"
+            f" remaining={remaining}). Please reconnect.",
         )
 
     token_data = tink_client.refresh_token(client_id, client_secret, row["refresh_token"])

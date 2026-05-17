@@ -7,9 +7,6 @@ import sqlite3
 from typing import Any, Literal
 
 import httpx
-
-log = logging.getLogger(__name__)
-
 from pydantic import BaseModel, Field
 
 from finp.commands._base import Command, EmptyParams
@@ -18,6 +15,8 @@ from finp.errors import AppError
 from finp.tink import auth as tink_auth
 from finp.tink import client as tink_client
 from finp.tink import credentials
+
+log = logging.getLogger(__name__)
 
 
 class CredentialsOut(BaseModel):
@@ -94,9 +93,8 @@ class LinkAccountParams(BaseModel):
 
 def _has_connection(conn: sqlite3.Connection, _: EmptyParams) -> HasConnectionOut:
     from datetime import UTC, datetime, timedelta
-    row = conn.execute(
-        "SELECT expires_at FROM tink_tokens ORDER BY rowid DESC LIMIT 1"
-    ).fetchone()
+
+    row = conn.execute("SELECT expires_at FROM tink_tokens ORDER BY rowid DESC LIMIT 1").fetchone()
     if row is None:
         return HasConnectionOut(connected=False)
     try:
@@ -115,8 +113,11 @@ def _get_access_token(conn: sqlite3.Connection) -> str:
     ).fetchone()
     if token_row is None:
         raise AppError("tink.no_tokens", "No Tink connection found. Complete OAuth first.")
-    log.debug("_get_access_token: tink_user_id=%r expires_at=%r",
-              token_row["tink_user_id"], token_row["expires_at"])
+    log.debug(
+        "_get_access_token: tink_user_id=%r expires_at=%r",
+        token_row["tink_user_id"],
+        token_row["expires_at"],
+    )
     creds = credentials.get(conn)
     if creds is None:
         raise AppError("tink.no_credentials", "Tink credentials not configured.")
@@ -133,11 +134,15 @@ def _list_tink_accounts(conn: sqlite3.Connection, _: EmptyParams) -> list[TinkAc
         raw_accounts = tink_client.list_accounts(access_token)
         log.debug("list_accounts returned %d accounts", len(raw_accounts))
     except httpx.HTTPStatusError as exc:
-        log.error("list_accounts HTTP error: status=%d body=%s",
-                  exc.response.status_code, exc.response.text[:500])
+        log.error(
+            "list_accounts HTTP error: status=%d body=%s",
+            exc.response.status_code,
+            exc.response.text[:500],
+        )
         if exc.response.status_code == 401:
-            raise AppError("tink.reauth_required",
-                           f"Tink API 401. Body: {exc.response.text[:200]}") from exc
+            raise AppError(
+                "tink.reauth_required", f"Tink API 401. Body: {exc.response.text[:200]}"
+            ) from exc
         raise
     result = []
     for a in raw_accounts:
@@ -158,6 +163,7 @@ def _link_account(conn: sqlite3.Connection, params: LinkAccountParams) -> Accoun
     if updated == 0:
         raise AppError("account.not_found", f"Account {params.finp_account_id} not found.")
     from finp.accounts import get as get_account
+
     return AccountOut.model_validate(get_account(conn, params.finp_account_id))
 
 
@@ -172,6 +178,7 @@ class SyncResult(BaseModel):
 
 def _sync_account(conn: sqlite3.Connection, params: SyncAccountParams) -> SyncResult:
     from finp.tink.sync import sync_account
+
     result = sync_account(conn, params.account_id)
     return SyncResult(**result)
 

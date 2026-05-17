@@ -94,9 +94,7 @@ def _insert(conn: sqlite3.Connection, params: InsertParams) -> OperationOut | No
 
 
 def _set_recurring(conn: sqlite3.Connection, params: SetRecurringParams) -> OperationOut:
-    return OperationOut.model_validate(
-        operations.set_recurring(conn, params.id, params.recurring)
-    )
+    return OperationOut.model_validate(operations.set_recurring(conn, params.id, params.recurring))
 
 
 def _assign_category(conn: sqlite3.Connection, params: AssignCategoryParams) -> OperationOut:

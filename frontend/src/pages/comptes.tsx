@@ -50,6 +50,7 @@ export function ComptesPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
@@ -182,6 +183,7 @@ function AddAccountDialog({
   // Reset state whenever the dialog closes.
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName("");
       setError(null);
       setSubmitting(false);

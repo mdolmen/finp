@@ -83,7 +83,12 @@ def list_transactions(
         params["pageToken"] = page_token
     if date_from:
         params["bookedDateGte"] = date_from
-    log.debug("list_transactions: account_id=%r date_from=%r page_token=%r", account_id, date_from, page_token)
+    log.debug(
+        "list_transactions: account_id=%r date_from=%r page_token=%r",
+        account_id,
+        date_from,
+        page_token,
+    )
     with _client(access_token) as c:
         r = c.get("/data/v2/transactions", params=params)
         if not r.is_success:
