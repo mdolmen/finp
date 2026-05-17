@@ -69,8 +69,13 @@ class ListParams(BaseModel):
     montant_op: Literal[">", "<", "=="] | None = None
     montant_value_cents: int | None = None
     recurring_only: bool = False
-    limit: int | None = None
+    limit: int = 200
     offset: int = 0
+
+
+class ListResult(BaseModel):
+    items: list[OperationOut]
+    has_more: bool
 
 
 def _get(conn: sqlite3.Connection, params: IdParams) -> OperationOut:
@@ -108,7 +113,8 @@ def _bulk_assign_category(
     return BulkAssignResult(updated=len(params.ids))
 
 
-def _list(conn: sqlite3.Connection, params: ListParams) -> list[OperationOut]:
+def _list(conn: sqlite3.Connection, params: ListParams) -> ListResult:
+    # Fetch one extra row to detect whether another page exists.
     rows = operations.list_(
         conn,
         account_ids=params.account_ids,
@@ -121,10 +127,12 @@ def _list(conn: sqlite3.Connection, params: ListParams) -> list[OperationOut]:
         date_to=params.date_to,
         search=params.search,
         recurring_only=params.recurring_only,
-        limit=params.limit,
+        limit=params.limit + 1,
         offset=params.offset,
     )
-    return [OperationOut.model_validate(o) for o in rows]
+    has_more = len(rows) > params.limit
+    items = [OperationOut.model_validate(o) for o in rows[: params.limit]]
+    return ListResult(items=items, has_more=has_more)
 
 
 METHODS: dict[str, Command] = {

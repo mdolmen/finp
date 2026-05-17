@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 
 const NO_CATEGORY = "__none__";
 const ALL_CATEGORIES = "__all__";
-const FETCH_LIMIT = 1000;
+const PAGE_SIZE = 200;
 
 type Filters = {
   debit: boolean;
@@ -58,6 +58,8 @@ export function OperationsPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
 
   const [ops, setOps] = useState<Operation[] | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const loadedCount = useRef(0);
   const [cats, setCats] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -75,29 +77,50 @@ export function OperationsPage() {
 
   const montantCents = useMemo(() => parseEurosToCents(debouncedMontant), [debouncedMontant]);
 
+  const buildFilters = useCallback(
+    (offset: number) => ({
+      types,
+      search: debouncedSearch.trim() || null,
+      include_no_category: filters.uncategorizedOnly,
+      recurring_only: filters.recurringOnly,
+      category_ids: categoryId !== null ? [categoryId] : null,
+      montant_op: montantCents !== null ? montantOp : null,
+      montant_value_cents: montantCents,
+      date_from: dateFrom || null,
+      date_to: dateTo || null,
+      limit: PAGE_SIZE,
+      offset,
+    }),
+    [types, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, categoryId, montantOp, montantCents, dateFrom, dateTo],
+  );
+
   const refresh = useCallback(async () => {
     if (types.length === 0) {
       setOps([]);
+      setHasMore(false);
+      loadedCount.current = 0;
       return;
     }
     try {
-      const rows = await operationsApi.list({
-        types,
-        search: debouncedSearch.trim() || null,
-        include_no_category: filters.uncategorizedOnly,
-        recurring_only: filters.recurringOnly,
-        category_ids: categoryId !== null ? [categoryId] : null,
-        montant_op: montantCents !== null ? montantOp : null,
-        montant_value_cents: montantCents,
-        date_from: dateFrom || null,
-        date_to: dateTo || null,
-        limit: FETCH_LIMIT,
-      });
-      setOps(rows);
+      const result = await operationsApi.list(buildFilters(0));
+      setOps(result.items);
+      setHasMore(result.has_more);
+      loadedCount.current = result.items.length;
     } catch (e) {
       setError(formatError(e));
     }
-  }, [types, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, categoryId, montantOp, montantCents, dateFrom, dateTo]);
+  }, [buildFilters, types.length]);
+
+  const loadMore = useCallback(async () => {
+    try {
+      const result = await operationsApi.list(buildFilters(loadedCount.current));
+      setOps((prev) => [...(prev ?? []), ...result.items]);
+      setHasMore(result.has_more);
+      loadedCount.current += result.items.length;
+    } catch (e) {
+      setError(formatError(e));
+    }
+  }, [buildFilters]);
 
   useEffect(() => {
     categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
@@ -393,6 +416,7 @@ export function OperationsPage() {
       {ops !== null && (
         <div className="flex justify-end mb-1.5 px-1 text-xs text-muted-foreground tabular-nums">
           {t.operations.count.replace("{n}", String(ops.length))}
+          {hasMore && "+"}
         </div>
       )}
 
@@ -406,6 +430,14 @@ export function OperationsPage() {
         onToggleSelectAll={toggleSelectAll}
         bottomBarVisible={selected.size > 0}
       />
+
+      {hasMore && (
+        <div className="flex justify-center py-2">
+          <Button size="sm" variant="outline" onClick={loadMore}>
+            {t.operations.loadMore}
+          </Button>
+        </div>
+      )}
 
       {selected.size > 0 && (
         <BulkBar

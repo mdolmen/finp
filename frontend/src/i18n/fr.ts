@@ -68,6 +68,7 @@ export const fr = {
     appliedRules: "{n} opération(s) classée(s) automatiquement.",
     empty: "Aucune opération ne correspond aux filtres.",
     count: "{n} opération(s)",
+    loadMore: "Charger plus",
     columnDate: "Date",
     columnMontant: "Montant",
     columnLibelle: "Libellé",

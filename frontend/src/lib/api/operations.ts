@@ -1,9 +1,9 @@
 import { rpc } from "./client";
-import type { Operation, OperationFilters } from "./types";
+import type { OperationFilters, OperationListResult, Operation } from "./types";
 
 export const operationsApi = {
   list: (filters: OperationFilters = {}) =>
-    rpc<Operation[]>("operations.list", filters),
+    rpc<OperationListResult>("operations.list", filters),
   get: (id: number) => rpc<Operation>("operations.get", { id }),
   insert: (input: {
     account_id: number;

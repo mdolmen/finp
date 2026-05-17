@@ -64,6 +64,7 @@ export const en = {
     appliedRules: "{n} operation(s) auto-categorized.",
     empty: "No operations match the filters.",
     count: "{n} operation(s)",
+    loadMore: "Load more",
     columnDate: "Date",
     columnMontant: "Amount",
     columnLibelle: "Label",

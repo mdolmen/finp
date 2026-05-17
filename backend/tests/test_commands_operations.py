@@ -70,17 +70,17 @@ def test_list_filters_round_trip(conn, acc):
         )
 
     r = _call(conn, "operations.list", {"types": ["credit"]})
-    assert [o["libelle"] for o in r["result"]] == ["Salaire"]
+    assert [o["libelle"] for o in r["result"]["items"]] == ["Salaire"]
 
     r = _call(
         conn,
         "operations.list",
         {"date_from": "2026-02-01", "date_to": "2026-02-28"},
     )
-    assert {o["libelle"] for o in r["result"]} == {"Salaire", "Boulangerie"}
+    assert {o["libelle"] for o in r["result"]["items"]} == {"Salaire", "Boulangerie"}
 
     r = _call(conn, "operations.list", {"search": "café"})
-    assert [o["libelle"] for o in r["result"]] == ["Café"]
+    assert [o["libelle"] for o in r["result"]["items"]] == ["Café"]
 
 
 def test_bulk_assign(conn, acc):
@@ -103,4 +103,4 @@ def test_bulk_assign(conn, acc):
     assert r["result"] == {"updated": 3}
 
     r = _call(conn, "operations.list", {"category_ids": [food["id"]]})
-    assert len(r["result"]) == 3
+    assert len(r["result"]["items"]) == 3

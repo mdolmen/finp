@@ -50,6 +50,11 @@ export type Rule = {
   created_at: string;
 };
 
+export type OperationListResult = {
+  items: Operation[];
+  has_more: boolean;
+};
+
 export type OperationFilters = {
   account_ids?: number[] | null;
   category_ids?: number[] | null;
@@ -61,6 +66,6 @@ export type OperationFilters = {
   montant_op?: ">" | "<" | "==" | null;
   montant_value_cents?: number | null;
   recurring_only?: boolean;
-  limit?: number | null;
+  limit?: number;
   offset?: number;
 };

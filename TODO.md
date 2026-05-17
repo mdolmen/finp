@@ -170,6 +170,62 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ---
 
+## M12 — Production readiness
+
+### M12.1 — Operations pagination
+
+- [ ] Replace the silent 1 000-row hard cap with cursor-based pagination on the Operations page.
+- [ ] Backend: add `cursor` / `limit` params to `operations.list`; return a `next_cursor` in the response.
+- [ ] Frontend: "Charger plus" button (or infinite scroll) fed by `next_cursor`; keep existing filter + search state across pages.
+
+### M12.2 — Local CI gate
+
+- [ ] `Makefile` (extend existing file) with a single `make check` target that runs in order: `ruff check`, `ruff format --check`, `uv run pytest`, `tsc --noEmit`, `pnpm lint`, `pnpm build`.
+- [ ] Git pre-commit hook that calls `make check` — blocks commits on any failure.
+- [ ] Document the setup step (`make install-hooks`) in CLAUDE.md dev commands.
+
+### M12.3 — Frontend E2E tests
+
+- [ ] Add Playwright; configure it to launch `pnpm tauri dev` (or a mocked Tauri backend) before the suite.
+- [ ] Golden paths to cover:
+    - [ ] Import a CSV → operations appear, re-import skips duplicates.
+    - [ ] Assign a category to an operation → persists across reload.
+    - [ ] Create a rule → applying rules assigns the category to matching ops.
+    - [ ] Bilan chart renders correct monthly totals after import.
+    - [ ] Filter + search combination on Operations does not break row selection.
+
+### M12.4 — Global toast / error system
+
+- [ ] Add `Sonner` (shadcn toast) at the app root; expose a `useToast` hook.
+- [ ] Remove per-page `error` state and replace with calls to the central toast.
+- [ ] Standardise: RPC domain errors → named toast with `appCode`-keyed message; unexpected errors → generic "Une erreur est survenue" with a copy-to-clipboard detail button.
+
+### M12.5 — RPC debug logging
+
+- [ ] `--debug` flag on the Python sidecar: when set, log every request and response (method, params, result or error) to stderr with timestamps.
+- [ ] Tauri passes the flag when built in debug mode; strips it in release.
+- [ ] Log file rotated to `{data_dir}/finp-debug.log`; last 5 MB kept.
+
+### M12.6 — Bank sync (GoCardless)
+
+> Evaluate GoCardless Bank Account Data (formerly Nordigen) as the primary open-banking provider. Same OAuth + redirect pattern as the parked Tink backend, generous free tier, no per-connection fee at small scale. If the evaluation is positive, build the integration from scratch rather than adapting the Tink code.
+
+- [ ] Evaluate: free-tier limits, supported FR banks, ToS for distributing credentials in a desktop binary, data freshness (T+1 vs real-time).
+- [ ] If approved — new `finp.gocardless` module mirroring the structure of `finp.tink` (`auth`, `client`, `sync`).
+- [ ] OAuth flow: same localhost callback pattern (port configurable, not hardcoded).
+- [ ] Sync pipeline: converges on the same `operations` ingestion path as CSV import and Tink.
+- [ ] Frontend: Comptes page — [Connecter] button, link dialog, per-account [Synchroniser] with last-sync timestamp and result toast.
+
+### M12.7 — Onboarding & empty states
+
+- [ ] Each page that can be empty shows a contextual empty state (not a blank screen):
+    - Bilan: "Importez un relevé ou connectez votre banque pour voir votre bilan."
+    - Opérations: "Aucune opération ne correspond à ces filtres." (vs. "Aucune opération — commencez par importer un relevé.")
+    - Catégories / Règles: brief hint on what they're for.
+- [ ] First-run flow: if DB has zero accounts, Bilan redirects to Comptes with a prominent call-to-action.
+
+---
+
 ## Later (planned, not v1)
 
 ### Page "Automatisations" (n8n)
