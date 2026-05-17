@@ -18,13 +18,13 @@ import {
   categoriesApi,
   operationsApi,
   rulesApi,
-  RpcError,
 } from "@/lib/api";
 import type { Account, Category, Operation, OperationType } from "@/lib/api";
 import { formatDate, formatEuros } from "@/lib/format";
 import { useDebounced } from "@/lib/useDebounced";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { toastError } from "@/lib/toast";
 
 const NO_CATEGORY = "__none__";
 const ALL_CATEGORIES = "__all__";
@@ -63,7 +63,6 @@ export function OperationsPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -107,7 +106,7 @@ export function OperationsPage() {
       setHasMore(result.has_more);
       loadedCount.current = result.items.length;
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, [buildFilters, types.length]);
 
@@ -118,13 +117,13 @@ export function OperationsPage() {
       setHasMore(result.has_more);
       loadedCount.current += result.items.length;
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, [buildFilters]);
 
   useEffect(() => {
-    categoriesApi.list().then(setCats).catch((e) => setError(formatError(e)));
-    accountsApi.list().then(setAccounts).catch((e) => setError(formatError(e)));
+    categoriesApi.list().then(setCats).catch((e) => toastError(e));
+    accountsApi.list().then(setAccounts).catch((e) => toastError(e));
   }, []);
 
   useEffect(() => {
@@ -207,7 +206,6 @@ export function OperationsPage() {
 
   async function handleBulkAssign(categoryId: number | null) {
     if (selected.size === 0) return;
-    setError(null);
     setInfo(null);
     try {
       const ids = [...selected];
@@ -215,13 +213,12 @@ export function OperationsPage() {
       setSelected(new Set());
       await refresh();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
   async function handleAssign(opId: number, value: string) {
     setInfo(null);
-    setError(null);
     try {
       const newCatId = value === NO_CATEGORY ? null : Number(value);
       await operationsApi.assignCategory(opId, newCatId);
@@ -240,30 +237,28 @@ export function OperationsPage() {
           ) ?? null,
       );
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
   async function handleCycleRecurring(opId: number, current: "none" | "monthly" | "yearly") {
     const next = current === "none" ? "monthly" : current === "monthly" ? "yearly" : "none";
-    setError(null);
     try {
       const updated = await operationsApi.setRecurring(opId, next);
       setOps((prev) => prev?.map((o) => (o.id === opId ? updated : o)) ?? null);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
   async function handleApplyRules() {
-    setError(null);
     setInfo(null);
     try {
       const r = await rulesApi.applyNow();
       setInfo(t.operations.appliedRules.replace("{n}", String(r.assigned)));
       await refresh();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -411,7 +406,6 @@ export function OperationsPage() {
         </Select>
       </div>
 
-      {error && <p className="text-sm text-destructive mb-2">{error}</p>}
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
 
       {ops !== null && (
@@ -763,10 +757,6 @@ function deriveType(op: Operation, newCatId: number | null, cats: Category[]): O
   const internal = cats.find((c) => c.is_builtin);
   if (newCatId != null && internal && newCatId === internal.id) return "internal";
   return op.montant_cents < 0 ? "debit" : "credit";
-}
-
-function formatError(e: unknown): string {
-  return e instanceof RpcError ? e.message : String(e);
 }
 
 // Accepts "1234,56", "1234.56", or "1 234,56". Returns null when the input

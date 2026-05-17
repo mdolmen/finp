@@ -35,7 +35,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { categoriesApi, rulesApi, RpcError } from "@/lib/api";
+import { categoriesApi, rulesApi } from "@/lib/api";
+import { toastError } from "@/lib/toast";
 import type { Category, Predicate, Rule } from "@/lib/api";
 import { formatEuros } from "@/lib/format";
 import { t } from "@/i18n";
@@ -43,7 +44,6 @@ import { t } from "@/i18n";
 export function ReglesPage() {
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [creating, setCreating] = useState(false);
@@ -55,7 +55,7 @@ export function ReglesPage() {
       setRules(rs);
       setCats(cs);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, []);
 
@@ -65,13 +65,12 @@ export function ReglesPage() {
   }, [refresh]);
 
   async function handleApplyNow() {
-    setError(null);
     setInfo(null);
     try {
       const r = await rulesApi.applyNow();
       setInfo(t.regles.appliedNow.replace("{n}", String(r.assigned)));
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -81,12 +80,11 @@ export function ReglesPage() {
       await rulesApi.delete(deleting.id);
       await refresh();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
   async function handleRun(rule: Rule) {
-    setError(null);
     setInfo(null);
     try {
       const r = await rulesApi.run(rule.id);
@@ -94,7 +92,7 @@ export function ReglesPage() {
         t.regles.ranRule.replace("{name}", rule.name).replace("{n}", String(r.assigned)),
       );
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -104,7 +102,7 @@ export function ReglesPage() {
       // Optimistic local update — avoids the brief flicker of a full refetch.
       setRules((prev) => prev?.map((r) => (r.id === rule.id ? { ...r, enabled } : r)) ?? null);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -126,7 +124,7 @@ export function ReglesPage() {
     try {
       await rulesApi.reorderInCategory(categoryId, orderedIds);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       await refresh();
     }
   }
@@ -148,7 +146,6 @@ export function ReglesPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive mb-2">{error}</p>}
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
 
       {rules === null ? (
@@ -371,7 +368,6 @@ function RuleFormDialog({
       : "",
   );
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const isEdit = rule !== null;
 
@@ -392,7 +388,6 @@ function RuleFormDialog({
     e.preventDefault();
     if (!valid || submitting || predicate === null) return;
     setSubmitting(true);
-    setError(null);
     try {
       if (isEdit) {
         await rulesApi.update({
@@ -412,7 +407,7 @@ function RuleFormDialog({
       }
       onSaved();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -512,8 +507,6 @@ function RuleFormDialog({
             <span>{t.regles.enabled}</span>
           </label>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
               {t.common.cancel}
@@ -564,6 +557,3 @@ function parseEurosToCents(input: string): number | null {
   return Math.round(value * 100);
 }
 
-function formatError(e: unknown): string {
-  return e instanceof RpcError ? e.message : String(e);
-}

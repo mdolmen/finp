@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./index.css";
 import { AppLayout } from "./components/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Toaster } from "./components/ui/sonner";
 import {
   BilanPage,
   CategoriesPage,
@@ -15,6 +16,7 @@ import {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
+    <Toaster richColors position="bottom-right" />
     <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>

@@ -228,4 +228,11 @@ export const en = {
     fr: "Français",
     en: "English",
   },
+  errors: {
+    unexpected: "An error occurred.",
+    copyDetail: "Copy detail",
+    conflict: "An item with this name already exists.",
+    categoryInUse: "This category is used by existing operations.",
+    notFound: "Item not found.",
+  },
 } as const;

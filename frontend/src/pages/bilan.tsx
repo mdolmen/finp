@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MultiSelect } from "@/components/MultiSelect";
-import { accountsApi, bilanApi, operationsApi, plannedApi, RpcError } from "@/lib/api";
+import { accountsApi, bilanApi, operationsApi, plannedApi } from "@/lib/api";
+import { toastError } from "@/lib/toast";
 import type {
   Account,
   BilanFilterOptions,
@@ -51,14 +52,13 @@ export function BilanPage() {
   const [planned, setPlanned] = useState<PlannedOperation[]>([]);
   const [addPlannedOpen, setAddPlannedOpen] = useState(false);
   const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [drilldown, setDrilldown] = useState<{ month: string; type: "debit" | "credit" } | null>(null);
 
   const refreshPlanned = useCallback(async () => {
     try {
       setPlanned(await plannedApi.list());
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, []);
 
@@ -68,11 +68,11 @@ export function BilanPage() {
     bilanApi
       .filterOptions()
       .then(setOptions)
-      .catch((e) => setError(formatError(e)));
+      .catch((e) => toastError(e));
     accountsApi
       .list()
       .then(setAccountsList)
-      .catch((e) => setError(formatError(e)));
+      .catch((e) => toastError(e));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshPlanned();
   }, [refreshPlanned]);
@@ -84,7 +84,7 @@ export function BilanPage() {
     bilanApi
       .summary({ today: shiftedTodayIso(monthOffset) })
       .then((s) => setYMaxEuros(computeYMaxEuros(s)))
-      .catch((e) => setError(formatError(e)));
+      .catch((e) => toastError(e));
   }, [monthOffset]);
 
   async function handleDeletePlanned() {
@@ -106,7 +106,7 @@ export function BilanPage() {
       });
       setSummary(s);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -140,7 +140,7 @@ export function BilanPage() {
         include_no_category_credit: includeNoCatCredit,
       })
       .then(setSummary)
-      .catch((e) => setError(formatError(e)));
+      .catch((e) => toastError(e));
   }, [accountIds, debitIds, creditIds, options, monthOffset]);
 
   if (accountsList.length === 0 && options !== null) {
@@ -201,8 +201,6 @@ export function BilanPage() {
           </Button>
         </div>
       </div>
-
-      {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       <BilanChart summary={summary} yMaxEuros={yMaxEuros} onBarClick={setDrilldown} />
 
@@ -385,7 +383,6 @@ function AddPlannedDialog({
   const [montantText, setMontantText] = useState("");
   const [libelle, setLibelle] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const cents = parseEurosToCents(montantText);
   const valid = !!date && cents !== null && libelle.trim();
@@ -394,7 +391,6 @@ function AddPlannedDialog({
     e.preventDefault();
     if (!valid || cents === null || submitting) return;
     setSubmitting(true);
-    setError(null);
     try {
       await plannedApi.create({
         date,
@@ -403,7 +399,7 @@ function AddPlannedDialog({
       });
       onCreated();
     } catch (e) {
-      setError(e instanceof RpcError ? e.message : String(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -447,7 +443,6 @@ function AddPlannedDialog({
               disabled={submitting}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
               {t.common.cancel}
@@ -484,7 +479,7 @@ function DrilldownModal({
     operationsApi
       .list({ types: [type], date_from: dateFrom, date_to: dateTo, limit: 500 })
       .then((r) => setOps(r.items))
-      .catch((e) => setFetchError(e instanceof RpcError ? e.message : String(e)));
+      .catch((e) => setFetchError(e instanceof Error ? e.message : String(e)));
   }, [month, type, dateFrom, dateTo]);
 
   // Group real ops by category, sorted ascending by group total.
@@ -1055,6 +1050,3 @@ function fmtEuros(value: number, opts?: { compact?: boolean }): string {
   return formatEuros(Math.round(value * 100), opts);
 }
 
-function formatError(e: unknown): string {
-  return e instanceof RpcError ? e.message : String(e);
-}

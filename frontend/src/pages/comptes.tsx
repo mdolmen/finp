@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { accountsApi, RpcError } from "@/lib/api";
+import { accountsApi } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { formatEuros as formatEurosFromCents } from "@/lib/format";
 import { t } from "@/i18n";
+import { toastError } from "@/lib/toast";
 
 const DATE_TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
@@ -35,7 +36,6 @@ function formatLastImport(iso: string | null): string {
 
 export function ComptesPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
@@ -45,7 +45,7 @@ export function ComptesPage() {
     try {
       setAccounts(await accountsApi.list());
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, []);
 
@@ -59,7 +59,7 @@ export function ComptesPage() {
       await accountsApi.delete(account.id);
       await refresh();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }
 
@@ -71,8 +71,6 @@ export function ComptesPage() {
           {t.common.add}
         </Button>
       </div>
-
-      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {accounts === null ? (
         <p className="text-sm text-muted-foreground">{t.common.loading}</p>
@@ -178,14 +176,12 @@ function AddAccountDialog({
 }) {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Reset state whenever the dialog closes.
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName("");
-      setError(null);
       setSubmitting(false);
     }
   }, [open]);
@@ -194,13 +190,12 @@ function AddAccountDialog({
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
-    setError(null);
     try {
       await accountsApi.create(name.trim());
       onCreated();
       onOpenChange(false);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -220,7 +215,6 @@ function AddAccountDialog({
             placeholder={t.comptes.namePlaceholder}
             disabled={submitting}
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button
               type="button"
@@ -256,7 +250,6 @@ function AccountSettingsDialog({
   );
   const [date, setDate] = useState(account.initial_balance_date ?? "");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const cents = parseEurosToCents(balanceText);
   // An empty value clears the balance back to 0; the date is optional too.
@@ -266,7 +259,6 @@ function AccountSettingsDialog({
     e.preventDefault();
     if (!valid || submitting) return;
     setSubmitting(true);
-    setError(null);
     try {
       await accountsApi.setInitialBalance(
         account.id,
@@ -275,7 +267,7 @@ function AccountSettingsDialog({
       );
       onSaved();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -315,7 +307,6 @@ function AccountSettingsDialog({
           <p className="text-xs text-muted-foreground">
             {t.comptes.initialBalanceHint}
           </p>
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
               {t.common.cancel}
@@ -338,10 +329,3 @@ function parseEurosToCents(input: string): number | null {
   return Math.round(value * 100);
 }
 
-function formatError(e: unknown): string {
-  if (e instanceof RpcError) {
-    if (e.appCode === "conflict") return t.comptes.errorDuplicate;
-    return e.message;
-  }
-  return String(e);
-}

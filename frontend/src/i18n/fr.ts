@@ -232,4 +232,11 @@ export const fr = {
     fr: "Français",
     en: "English",
   },
+  errors: {
+    unexpected: "Une erreur est survenue.",
+    copyDetail: "Copier le détail",
+    conflict: "Un élément avec ce nom existe déjà.",
+    categoryInUse: "Cette catégorie est utilisée par des opérations.",
+    notFound: "Élément introuvable.",
+  },
 } as const;

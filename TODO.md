@@ -174,25 +174,25 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M12.1 — Operations pagination
 
-- [ ] Replace the silent 1 000-row hard cap with cursor-based pagination on the Operations page.
-- [ ] Backend: add `cursor` / `limit` params to `operations.list`; return a `next_cursor` in the response.
-- [ ] Frontend: "Charger plus" button (or infinite scroll) fed by `next_cursor`; keep existing filter + search state across pages.
+- [x] Replace the silent 1 000-row hard cap with cursor-based pagination on the Operations page.
+- [x] Backend: add `cursor` / `limit` params to `operations.list`; return a `next_cursor` in the response.
+- [x] Frontend: "Charger plus" button (or infinite scroll) fed by `next_cursor`; keep existing filter + search state across pages.
 
 ### M12.2 — Local CI gate
 
-- [ ] `Makefile` (extend existing file) with a single `make check` target that runs in order: `ruff check`, `ruff format --check`, `uv run pytest`, `tsc --noEmit`, `pnpm lint`, `pnpm build`.
-- [ ] Git pre-commit hook that calls `make check` — blocks commits on any failure.
-- [ ] Document the setup step (`make install-hooks`) in CLAUDE.md dev commands.
+- [x] `Makefile` (extend existing file) with a single `make check` target that runs in order: `ruff check`, `ruff format --check`, `uv run pytest`, `tsc --noEmit`, `pnpm lint`, `pnpm build`.
+- [x] Git pre-commit hook that calls `make check` — blocks commits on any failure.
+- [x] Document the setup step (`make install-hooks`) in CLAUDE.md dev commands.
 
 ### M12.3 — Frontend E2E tests
 
-- [ ] Add Playwright; configure it to launch `pnpm tauri dev` (or a mocked Tauri backend) before the suite.
-- [ ] Golden paths to cover:
-    - [ ] Import a CSV → operations appear, re-import skips duplicates.
-    - [ ] Assign a category to an operation → persists across reload.
-    - [ ] Create a rule → applying rules assigns the category to matching ops.
-    - [ ] Bilan chart renders correct monthly totals after import.
-    - [ ] Filter + search combination on Operations does not break row selection.
+- [x] Add Playwright; configure it to launch `pnpm tauri dev` (or a mocked Tauri backend) before the suite.
+- [x] Golden paths to cover:
+    - [x] Import a CSV → operations appear, re-import skips duplicates.
+    - [x] Assign a category to an operation → persists across reload.
+    - [x] Create a rule → applying rules assigns the category to matching ops.
+    - [x] Bilan chart renders correct monthly totals after import.
+    - [x] Filter + search combination on Operations does not break row selection.
 
 ### M12.4 — Global toast / error system
 

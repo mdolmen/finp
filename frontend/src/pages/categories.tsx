@@ -21,10 +21,10 @@ import { categoriesApi, RpcError } from "@/lib/api";
 import type { Category } from "@/lib/api";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { t } from "@/i18n";
+import { toastError } from "@/lib/toast";
 
 export function CategoriesPage() {
   const [cats, setCats] = useState<Category[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [reassigning, setReassigning] = useState<Category | null>(null);
@@ -34,7 +34,7 @@ export function CategoriesPage() {
     try {
       setCats(await categoriesApi.list());
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
     }
   }, []);
 
@@ -51,7 +51,7 @@ export function CategoriesPage() {
       if (e instanceof RpcError && e.appCode === "category.in_use") {
         setReassigning(cat);
       } else {
-        setError(formatError(e));
+        toastError(e);
       }
     }
   }
@@ -64,8 +64,6 @@ export function CategoriesPage() {
           {t.common.add}
         </Button>
       </div>
-
-      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {cats === null ? (
         <p className="text-sm text-muted-foreground">{t.common.loading}</p>
@@ -182,7 +180,6 @@ function RenameRow({
 }) {
   const [name, setName] = useState(cat.name);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function save() {
     if (!name.trim() || submitting) return;
@@ -191,12 +188,11 @@ function RenameRow({
       return;
     }
     setSubmitting(true);
-    setError(null);
     try {
       await categoriesApi.rename(cat.id, name.trim());
       onSaved();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -220,7 +216,6 @@ function RenameRow({
       <Button size="sm" variant="ghost" onClick={onCancel} disabled={submitting}>
         <X className="size-3.5" />
       </Button>
-      {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   );
 }
@@ -236,13 +231,11 @@ function AddCategoryDialog({
 }) {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setName("");
-      setError(null);
       setSubmitting(false);
     }
   }, [open]);
@@ -251,13 +244,12 @@ function AddCategoryDialog({
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
-    setError(null);
     try {
       await categoriesApi.create(name.trim());
       onCreated();
       onOpenChange(false);
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -277,7 +269,6 @@ function AddCategoryDialog({
             placeholder={t.categories.namePlaceholder}
             disabled={submitting}
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button
               type="button"
@@ -312,18 +303,16 @@ function ReassignDialog({
 }) {
   const [target, setTarget] = useState<string>(NONE_VALUE);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
     setSubmitting(true);
-    setError(null);
     try {
       const toId = target === NONE_VALUE ? null : Number(target);
       await categoriesApi.reassignOperations(source.id, toId);
       await categoriesApi.delete(source.id);
       onDone();
     } catch (e) {
-      setError(formatError(e));
+      toastError(e);
       setSubmitting(false);
     }
   }
@@ -349,7 +338,6 @@ function ReassignDialog({
               ))}
             </SelectContent>
           </Select>
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
@@ -362,12 +350,4 @@ function ReassignDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function formatError(e: unknown): string {
-  if (e instanceof RpcError) {
-    if (e.appCode === "conflict") return t.categories.errorDuplicate;
-    return e.message;
-  }
-  return String(e);
 }
