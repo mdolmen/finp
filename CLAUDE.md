@@ -85,22 +85,22 @@ The product is a personal tool, but it should feel crafted, not generic. When bu
 
 ## Development commands
 
-(Fill in as the project takes shape — placeholders to keep consistent across future sessions.)
-
 ```bash
-# Backend
-uv sync                          # install deps
-uv run ruff check && uv run ruff format --check
-uv run pytest                    # tests (when they exist)
-
-# Frontend
+# First-time setup (run once after cloning)
+cd backend && uv sync
 cd frontend && pnpm install
-pnpm dev                         # vite dev server
-pnpm build
+make install-hooks               # register versioned pre-commit hook
 
-# Tauri (full app)
-pnpm tauri dev
-pnpm tauri build
+# CI gate — runs on every commit via hooks/pre-commit
+make check                       # ruff lint/format, pytest, tsc, eslint, vite build
+
+# Individual steps
+make lint                        # lint + type-check only (faster)
+make test                        # pytest only
+
+# App
+make dev                         # pnpm tauri dev
+make build                       # pnpm tauri build (full installer)
 ```
 
 ## Out of scope (for now)
