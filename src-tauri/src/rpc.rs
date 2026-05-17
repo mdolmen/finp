@@ -84,6 +84,7 @@ impl RpcClient {
             .kill_on_drop(true);
         if cfg!(debug_assertions) {
             cmd.env("FINP_DB_PATH", backend_dir.join("dev.db"));
+            cmd.arg("--debug");
         }
         let mut child = cmd.spawn()?;
 

@@ -11,9 +11,12 @@ Event names use a dotted convention: ``<resource>.<verb>``.
 from __future__ import annotations
 
 import contextlib
+import logging
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Final
+
+_logger = logging.getLogger(__name__)
 
 OPERATION_CREATED: Final = "operation.created"
 OPERATION_UPDATED: Final = "operation.updated"
@@ -46,6 +49,7 @@ class EventBus:
         Handler exceptions are swallowed (logged via ``stderr``) so one
         misbehaving subscriber can't break unrelated ones or the caller.
         """
+        _logger.debug("event %s %s", event, payload)
         for handler in list(self._handlers.get(event, ())):
             try:
                 handler(payload)

@@ -14,9 +14,11 @@ Lifecycle:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 import sys
+import time
 import traceback
 from typing import Any
 
@@ -33,7 +35,10 @@ from finp.commands import rules as rule_cmds
 from finp.commands import tink as tink_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
+from finp.log import enable_debug
 from finp.log import setup as setup_logging
+
+_logger = logging.getLogger(__name__)
 
 
 def _ping(_conn: sqlite3.Connection, _params: EmptyParams) -> dict[str, Any]:
@@ -102,12 +107,20 @@ def _handle(conn: sqlite3.Connection, line: str) -> dict[str, Any] | None:
             data={"errors": exc.errors(include_url=False, include_input=False)},
         )
 
+    _logger.debug("→ %s %s", method, params)
+    t0 = time.monotonic()
     try:
-        return _result(req_id, cmd.handler(conn, validated))
+        result = _result(req_id, cmd.handler(conn, validated))
+        elapsed = int((time.monotonic() - t0) * 1000)
+        _logger.debug("← %s %dms", method, elapsed)
+        return result
     except Exception as exc:
+        elapsed = int((time.monotonic() - t0) * 1000)
         app = to_app_error(exc)
         if app is not None:
+            _logger.debug("✗ %s %dms %s", method, elapsed, app.code)
             return _error(req_id, -32000, app.message, data={"code": app.code, **(app.data or {})})
+        _logger.debug("✗ %s %dms %s", method, elapsed, exc)
         traceback.print_exc(file=sys.stderr)
         return _error(req_id, -32603, "internal error", data={"detail": str(exc)})
 
@@ -121,9 +134,13 @@ def _open_db() -> sqlite3.Connection:
 
 def main() -> None:
     """Run the JSON-RPC loop until stdin closes."""
+    debug = "--debug" in sys.argv
     setup_logging()
+    if debug:
+        enable_debug()
     conn = _open_db()
-    print(f"finp.rpc ready (version {__version__})", file=sys.stderr, flush=True)
+    suffix = " [debug]" if debug else ""
+    print(f"finp.rpc ready (version {__version__}){suffix}", file=sys.stderr, flush=True)
     try:
         for raw in sys.stdin:
             line = raw.strip()
