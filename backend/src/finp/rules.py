@@ -70,6 +70,7 @@ def create(
         " VALUES (?, ?, ?, ?, ?)",
         (name, category_id, pri, json.dumps(predicate.to_dict()), int(enabled)),
     )
+    assert cur.lastrowid is not None
     return get(conn, cur.lastrowid)
 
 

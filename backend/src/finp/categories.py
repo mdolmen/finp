@@ -49,6 +49,7 @@ def create(conn: sqlite3.Connection, name: str) -> Category:
         "INSERT INTO categories (name, is_builtin, display_order) VALUES (?, 0, 0)",
         (name,),
     )
+    assert cur.lastrowid is not None
     return get(conn, cur.lastrowid)
 
 

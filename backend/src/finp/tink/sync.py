@@ -114,6 +114,7 @@ def sync_account(conn: sqlite3.Connection, account_id: int) -> dict:
         if cur.rowcount == 0:
             skipped += 1
         else:
+            assert cur.lastrowid is not None
             events.bus.publish(
                 events.OPERATION_CREATED, {"id": cur.lastrowid, "account_id": account_id}
             )

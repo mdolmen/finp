@@ -119,6 +119,7 @@ def insert(
     if cur.rowcount == 0:
         return None
 
+    assert cur.lastrowid is not None
     op = get(conn, cur.lastrowid)
     events.bus.publish(events.OPERATION_CREATED, {"id": op.id, "account_id": account_id})
     return op

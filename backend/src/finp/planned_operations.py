@@ -51,6 +51,7 @@ def create(
         "INSERT INTO planned_operations(date, montant_cents, libelle) VALUES (?, ?, ?)",
         (date, montant_cents, libelle),
     )
+    assert cur.lastrowid is not None
     return get(conn, cur.lastrowid)
 
 

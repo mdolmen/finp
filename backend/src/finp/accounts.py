@@ -70,6 +70,7 @@ _SELECT_ACCOUNT = (
 def create(conn: sqlite3.Connection, name: str) -> Account:
     """Create an account with a unique ``name``. Mapping is set later via import."""
     cur = conn.execute("INSERT INTO accounts (name) VALUES (?)", (name,))
+    assert cur.lastrowid is not None
     return get(conn, cur.lastrowid)
 
 
