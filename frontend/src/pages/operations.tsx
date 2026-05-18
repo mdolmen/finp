@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { toastError } from "@/lib/toast";
 
 const NO_CATEGORY = "__none__";
-const ALL_CATEGORIES = "__all__";
 const PAGE_SIZE = 200;
 
 type Filters = {
@@ -55,7 +54,8 @@ export function OperationsPage() {
   const debouncedMontant = useDebounced(montantText, 200);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[] | null>(null);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[] | null>(null);
 
   const [ops, setOps] = useState<Operation[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -79,10 +79,11 @@ export function OperationsPage() {
   const buildFilters = useCallback(
     (offset: number) => ({
       types,
+      account_ids: selectedAccountIds,
       search: debouncedSearch.trim() || null,
       include_no_category: filters.uncategorizedOnly,
       recurring_only: filters.recurringOnly,
-      category_ids: categoryId !== null ? [categoryId] : null,
+      category_ids: selectedCategoryIds,
       montant_op: montantCents !== null ? montantOp : null,
       montant_value_cents: montantCents,
       date_from: dateFrom || null,
@@ -90,7 +91,7 @@ export function OperationsPage() {
       limit: PAGE_SIZE,
       offset,
     }),
-    [types, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, categoryId, montantOp, montantCents, dateFrom, dateTo],
+    [types, selectedAccountIds, selectedCategoryIds, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, montantOp, montantCents, dateFrom, dateTo],
   );
 
   const refresh = useCallback(async () => {
@@ -179,8 +180,13 @@ export function OperationsPage() {
     setSelected(new Set());
   }
 
-  function setCategoryIdAndClear(v: number | null) {
-    setCategoryId(v);
+  function setSelectedCategoryIdsAndClear(v: number[] | null) {
+    setSelectedCategoryIds(v);
+    setSelected(new Set());
+  }
+
+  function setSelectedAccountIdsAndClear(v: number[] | null) {
+    setSelectedAccountIds(v);
     setSelected(new Set());
   }
 
@@ -388,22 +394,16 @@ export function OperationsPage() {
           checked={filters.recurringOnly}
           onChange={(v) => setFiltersAndClear((f) => ({ ...f, recurringOnly: v }))}
         />
-        <Select
-          value={categoryId !== null ? String(categoryId) : ALL_CATEGORIES}
-          onValueChange={(v) => setCategoryIdAndClear(v === ALL_CATEGORIES ? null : Number(v))}
-        >
-          <SelectTrigger className="h-7 text-xs w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_CATEGORIES}>{t.common.all}</SelectItem>
-            {cats.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CategoryMultiSelect
+          categories={cats}
+          selected={selectedCategoryIds}
+          onChange={setSelectedCategoryIdsAndClear}
+        />
+        <AccountMultiSelect
+          accounts={accounts ?? []}
+          selected={selectedAccountIds}
+          onChange={setSelectedAccountIdsAndClear}
+        />
       </div>
 
       {info && <p className="text-sm text-muted-foreground mb-2">{info}</p>}
@@ -501,6 +501,124 @@ function BulkBar({
         <X className="size-3.5" />
       </Button>
     </div>
+  );
+}
+
+function CategoryMultiSelect({
+  categories,
+  selected,
+  onChange,
+}: {
+  categories: Category[];
+  selected: number[] | null;
+  onChange: (v: number[] | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const isAll = selected === null;
+
+  const label = isAll
+    ? t.operations.filterAllCategories
+    : selected.length === 1
+      ? (categories.find((c) => c.id === selected[0])?.name ?? t.operations.filterCategoriesCount.replace("{n}", "1"))
+      : t.operations.filterCategoriesCount.replace("{n}", String(selected.length));
+
+  function isChecked(id: number) {
+    return selected === null || selected.includes(id);
+  }
+
+  function toggle(id: number, checked: boolean) {
+    const current = selected ?? categories.map((c) => c.id);
+    const next = checked ? [...current, id] : current.filter((x) => x !== id);
+    onChange(next.length === categories.length ? null : next);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          className={cn("h-7 text-xs font-normal", !isAll && "border-primary/60 text-primary")}
+        >
+          {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1" align="start">
+        <ul className="max-h-72 overflow-y-auto">
+          {categories.map((c) => (
+            <li key={c.id}>
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm select-none">
+                <Checkbox
+                  checked={isChecked(c.id)}
+                  onCheckedChange={(v) => toggle(c.id, v === true)}
+                />
+                <span className="truncate">{c.name}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function AccountMultiSelect({
+  accounts,
+  selected,
+  onChange,
+}: {
+  accounts: Account[];
+  selected: number[] | null;
+  onChange: (v: number[] | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const isAll = selected === null;
+
+  const label = isAll
+    ? t.operations.filterAllAccounts
+    : selected.length === 1
+      ? (accounts.find((a) => a.id === selected[0])?.name ?? t.operations.filterAccountsCount.replace("{n}", "1"))
+      : t.operations.filterAccountsCount.replace("{n}", String(selected.length));
+
+  function isChecked(id: number) {
+    return selected === null || selected.includes(id);
+  }
+
+  function toggle(id: number, checked: boolean) {
+    const current = selected ?? accounts.map((a) => a.id);
+    const next = checked ? [...current, id] : current.filter((x) => x !== id);
+    onChange(next.length === accounts.length ? null : next);
+  }
+
+  if (accounts.length <= 1) return null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          className={cn("h-7 text-xs font-normal gap-1", !isAll && "border-primary/60 text-primary")}
+        >
+          {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1" align="start">
+        <ul>
+          {accounts.map((a) => (
+            <li key={a.id}>
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm select-none">
+                <Checkbox
+                  checked={isChecked(a.id)}
+                  onCheckedChange={(v) => toggle(a.id, v === true)}
+                />
+                <span className="truncate">{a.name}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 
