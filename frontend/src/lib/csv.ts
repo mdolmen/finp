@@ -23,6 +23,7 @@ type BaseMapping = {
   date_format: DateFormat;
   montant_decimal: DecimalSeparator;
   libelle_column: string;
+  balance_column?: string;
 };
 
 export type CsvMapping =
@@ -83,6 +84,7 @@ export type NormalizedRow = {
   date: string;
   montant_cents: number;
   libelle: string;
+  balance_cents?: number;
 };
 
 export type RowConversion =
@@ -108,7 +110,11 @@ export function convertRows(rows: RawRow[], mapping: CsvMapping): RowConversion[
       const montant_cents = montantFromRow(raw, mapping);
       const libelle = (raw[mapping.libelle_column] ?? "").trim();
       if (!libelle) throw new Error("libellé vide");
-      return { ok: true as const, row: { date, montant_cents, libelle } };
+      const balance_cents =
+        mapping.balance_column
+          ? parseMontantCents(raw[mapping.balance_column] ?? "", mapping.montant_decimal)
+          : undefined;
+      return { ok: true as const, row: { date, montant_cents, libelle, balance_cents } };
     } catch (e) {
       return {
         ok: false as const,

@@ -282,6 +282,7 @@ function MappingStep({
     montant_column: string;
     debit_column: string;
     credit_column: string;
+    balance_column: string;
   }>;
 
   const [charset, setCharset] = useState<Charset>(savedAny.charset ?? "utf-8");
@@ -294,6 +295,7 @@ function MappingStep({
   const [montantColumn, setMontantColumn] = useState(savedAny.montant_column ?? "");
   const [debitColumn, setDebitColumn] = useState(savedAny.debit_column ?? "");
   const [creditColumn, setCreditColumn] = useState(savedAny.credit_column ?? "");
+  const [balanceColumn, setBalanceColumn] = useState(savedAny.balance_column ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -372,6 +374,7 @@ function MappingStep({
       date_format: dateFormat,
       montant_decimal: decimal,
       libelle_column: libelleColumn,
+      ...(balanceColumn ? { balance_column: balanceColumn } : {}),
     };
     return montantMode === "single"
       ? { ...base, montant_mode: "single", montant_column: montantColumn }
@@ -473,6 +476,12 @@ function MappingStep({
           value={libelleColumn}
           columns={parsed.columns}
           onChange={setLibelleColumn}
+        />
+        <OptionalColumnPicker
+          label={t.import.fieldBalance}
+          value={balanceColumn}
+          columns={parsed.columns}
+          onChange={setBalanceColumn}
         />
       </div>
 
@@ -703,6 +712,44 @@ function ColumnPicker({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
+          {columns.map((c) => (
+            <SelectItem key={c} value={c}>
+              {c}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+const NO_COLUMN = "__none__";
+
+function OptionalColumnPicker({
+  label,
+  value,
+  columns,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  columns: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5 min-w-0">
+      <Label className="text-xs">{label}</Label>
+      <Select
+        value={value || NO_COLUMN}
+        onValueChange={(v) => onChange(v === NO_COLUMN ? "" : v)}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_COLUMN}>
+            <span className="text-muted-foreground">—</span>
+          </SelectItem>
           {columns.map((c) => (
             <SelectItem key={c} value={c}>
               {c}

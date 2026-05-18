@@ -70,4 +70,4 @@ def test_ingest_rejects_unknown_account(conn):
     rows = [{"date": "2026-01-01", "montant_cents": -100, "libelle": "x"}]
     r = _call(conn, "import.ingest", {"account_id": 999, "rows": rows})
     assert r["error"]["code"] == -32000
-    assert r["error"]["data"]["code"] == "conflict"
+    assert r["error"]["data"]["code"] == "account.not_found"

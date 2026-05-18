@@ -5,6 +5,7 @@ export type IngestRow = {
   date: string;
   montant_cents: number;
   libelle: string;
+  balance_cents?: number;
 };
 
 export type IngestResult = {

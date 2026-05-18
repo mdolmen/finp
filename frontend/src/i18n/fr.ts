@@ -174,6 +174,7 @@ export const fr = {
     fieldCredit: "Colonne crédit (entrant)",
     fieldDecimal: "Séparateur décimal",
     fieldLibelle: "Colonne libellé",
+    fieldBalance: "Colonne solde (optionnel)",
     preview: "Aperçu (5 premières lignes)",
     validate: "Valider",
     run: "Importer",

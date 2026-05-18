@@ -5,8 +5,10 @@ Money is stored as integer cents. Type is derived:
     - else montant < 0 → ``debit``
     - else                → ``credit``
 
-Insert is idempotent: duplicates (same account + date + montant + libellé)
-are silently skipped and ``insert`` returns ``None``.
+Insert is idempotent: duplicates are silently skipped and ``insert`` returns
+``None``. The dedup hash covers account + date + montant + libellé + balance
+(when balance is present). Including balance disambiguates two real
+transactions on the same day with the same amount and label.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ class Operation:
     dedup_hash: str
     created_at: str
     recurring: str = "none"  # 'none' | 'monthly' | 'yearly'
+    balance_cents: int | None = None
 
 
 def _row_to_op(row: sqlite3.Row) -> Operation:
@@ -49,11 +52,19 @@ def _row_to_op(row: sqlite3.Row) -> Operation:
         dedup_hash=row["dedup_hash"],
         created_at=row["created_at"],
         recurring=row["recurring"],
+        balance_cents=row["balance_cents"],
     )
 
 
-def _dedup_hash(account_id: int, date: str, montant_cents: int, libelle: str) -> str:
-    payload = f"{account_id}|{date}|{montant_cents}|{libelle.strip()}".encode()
+def _dedup_hash(
+    account_id: int,
+    date: str,
+    montant_cents: int,
+    libelle: str,
+    balance_cents: int | None = None,
+) -> str:
+    base = f"{account_id}|{date}|{montant_cents}|{libelle.strip()}"
+    payload = (base if balance_cents is None else f"{base}|{balance_cents}").encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -64,12 +75,13 @@ def find_by_content(
     date: str,
     montant_cents: int,
     libelle: str,
+    balance_cents: int | None = None,
 ) -> Operation | None:
     """Return the existing operation that would dedup-collide with these values."""
-    h = _dedup_hash(account_id, date, montant_cents, libelle)
+    h = _dedup_hash(account_id, date, montant_cents, libelle, balance_cents)
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, recurring FROM operations WHERE dedup_hash = ?",
+        " dedup_hash, created_at, recurring, balance_cents FROM operations WHERE dedup_hash = ?",
         (h,),
     ).fetchone()
     return _row_to_op(row) if row else None
@@ -88,19 +100,21 @@ def insert(
     date: str,
     montant_cents: int,
     libelle: str,
+    balance_cents: int | None = None,
 ) -> Operation | None:
     """Insert an operation. Returns ``None`` if a duplicate was skipped.
 
     Type is derived from the montant sign. Categories are assigned later
     (manually or by the rules engine).
     """
-    dedup = _dedup_hash(account_id, date, montant_cents, libelle)
+    dedup = _dedup_hash(account_id, date, montant_cents, libelle, balance_cents)
     op_type: OperationType = "debit" if montant_cents < 0 else "credit"
 
     cur = conn.execute(
-        "INSERT INTO operations(account_id, date, montant_cents, libelle, type, dedup_hash)"
-        " VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(dedup_hash) DO NOTHING",
-        (account_id, date, montant_cents, libelle, op_type, dedup),
+        "INSERT INTO operations"
+        "(account_id, date, montant_cents, libelle, type, dedup_hash, balance_cents)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(dedup_hash) DO NOTHING",
+        (account_id, date, montant_cents, libelle, op_type, dedup, balance_cents),
     )
     if cur.rowcount == 0:
         return None
@@ -114,7 +128,7 @@ def get(conn: sqlite3.Connection, op_id: int) -> Operation:
     """Fetch a single operation by id."""
     row = conn.execute(
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, recurring FROM operations WHERE id = ?",
+        " dedup_hash, created_at, recurring, balance_cents FROM operations WHERE id = ?",
         (op_id,),
     ).fetchone()
     if row is None:
@@ -250,7 +264,7 @@ def list_(
 
     sql = (
         "SELECT id, account_id, date, montant_cents, libelle, type, category_id,"
-        " dedup_hash, created_at, recurring FROM operations"
+        " dedup_hash, created_at, recurring, balance_cents FROM operations"
     )
     if where:
         sql += " WHERE " + " AND ".join(where)
