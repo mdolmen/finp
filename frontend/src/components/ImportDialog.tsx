@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { accountsApi, importsApi, RpcError } from "@/lib/api";
+import { accountsApi, importsApi, operationsApi, RpcError } from "@/lib/api";
 import type { Account, IngestResult } from "@/lib/api";
 import { convertRows, decodeBuffer } from "@/lib/csv";
+import { toastError } from "@/lib/toast";
 import type {
   Charset,
   CsvMapping,
@@ -220,6 +221,7 @@ export function ImportDialog({
             result={step.result}
             failed={step.failed}
             failedReasons={step.failedReasons}
+            onImported={onImported}
             onBack={() =>
               setStep({
                 kind: "mapping",
@@ -541,23 +543,53 @@ function DoneStep({
   failedReasons,
   onBack,
   onClose,
+  onImported,
 }: {
   result: IngestResult;
   failed: number;
   failedReasons: string[];
   onBack: () => void;
   onClose: () => void;
+  onImported: () => void;
 }) {
+  // Op IDs the user has marked as "not a duplicate" — we hide them from
+  // the table and shift the counts (imported↑, skipped↓) accordingly.
+  const [resolved, setResolved] = useState<Set<number>>(new Set());
+  const [pending, setPending] = useState<Set<number>>(new Set());
+
+  const skipped = result.skipped_existing ?? [];
+  const visibleSkipped = skipped.filter((op) => !resolved.has(op.id));
+  const adjustedImported = result.imported + resolved.size;
+  const adjustedSkipped = result.skipped - resolved.size;
+
+  async function handleNotDuplicate(opId: number) {
+    if (pending.has(opId) || resolved.has(opId)) return;
+    setPending((prev) => new Set(prev).add(opId));
+    try {
+      await operationsApi.createDuplicate(opId);
+      setResolved((prev) => new Set(prev).add(opId));
+      onImported();
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(opId);
+        return next;
+      });
+    }
+  }
+
   return (
     <div className="space-y-3">
       <ul className="text-sm space-y-1">
         <li>
           <span className="text-muted-foreground">{t.import.imported}</span>{" "}
-          <span className="font-semibold">{result.imported}</span>
+          <span className="font-semibold">{adjustedImported}</span>
         </li>
         <li>
           <span className="text-muted-foreground">{t.import.skipped}</span>{" "}
-          <span className="font-semibold">{result.skipped}</span>
+          <span className="font-semibold">{adjustedSkipped}</span>
         </li>
         {failed > 0 && (
           <li className="text-destructive">
@@ -576,7 +608,7 @@ function DoneStep({
           ))}
         </ul>
       )}
-      {(result.skipped_existing ?? []).length > 0 && (
+      {visibleSkipped.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
             {t.import.skippedExistingHeader}
@@ -593,10 +625,11 @@ function DoneStep({
                       Montant
                     </th>
                     <th className="text-left font-medium px-3 py-1.5">Libellé</th>
+                    <th className="px-3 py-1.5 w-0" />
                   </tr>
                 </thead>
                 <tbody>
-                  {(result.skipped_existing ?? []).map((op) => (
+                  {visibleSkipped.map((op) => (
                     <tr key={op.id} className="border-b border-border last:border-0">
                       <td className="px-3 py-1 whitespace-nowrap text-muted-foreground">
                         {op.date}
@@ -606,6 +639,18 @@ function DoneStep({
                       </td>
                       <td className="px-3 py-1 text-muted-foreground">
                         {op.libelle}
+                      </td>
+                      <td className="px-3 py-1 whitespace-nowrap text-right">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs"
+                          disabled={pending.has(op.id)}
+                          onClick={() => handleNotDuplicate(op.id)}
+                        >
+                          {t.import.notDuplicate}
+                        </Button>
                       </td>
                     </tr>
                   ))}

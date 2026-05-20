@@ -11,6 +11,7 @@ export const operationsApi = {
     montant_cents: number;
     libelle: string;
   }) => rpc<Operation | null>("operations.insert", input),
+  createDuplicate: (id: number) => rpc<Operation>("operations.create_duplicate", { id }),
   assignCategory: (id: number, categoryId: number | null) =>
     rpc<Operation>("operations.assign_category", { id, category_id: categoryId }),
   bulkAssignCategory: (ids: number[], categoryId: number | null) =>

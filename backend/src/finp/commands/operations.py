@@ -93,6 +93,10 @@ def _insert(conn: sqlite3.Connection, params: InsertParams) -> OperationOut | No
     return OperationOut.model_validate(op) if op is not None else None
 
 
+def _create_duplicate(conn: sqlite3.Connection, params: IdParams) -> OperationOut:
+    return OperationOut.model_validate(operations.create_duplicate(conn, params.id))
+
+
 def _set_recurring(conn: sqlite3.Connection, params: SetRecurringParams) -> OperationOut:
     return OperationOut.model_validate(operations.set_recurring(conn, params.id, params.recurring))
 
@@ -137,6 +141,7 @@ METHODS: dict[str, Command] = {
     "operations.get": Command(IdParams, _get),
     "operations.list": Command(ListParams, _list),
     "operations.insert": Command(InsertParams, _insert),
+    "operations.create_duplicate": Command(IdParams, _create_duplicate),
     "operations.set_recurring": Command(SetRecurringParams, _set_recurring),
     "operations.assign_category": Command(AssignCategoryParams, _assign_category),
     "operations.bulk_assign_category": Command(BulkAssignCategoryParams, _bulk_assign_category),

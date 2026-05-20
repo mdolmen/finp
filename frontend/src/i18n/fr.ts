@@ -189,6 +189,7 @@ export const fr = {
     skipped: "Doublons ignorés :",
     skippedExistingHeader:
       "Opérations déjà présentes (rejetées comme doublons) :",
+    notDuplicate: "Pas un doublon",
     failed: "Lignes en erreur",
     ruleAssigned: "Règles appliquées :",
   },

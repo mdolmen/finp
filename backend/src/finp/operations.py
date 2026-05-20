@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sqlite3
+import uuid
 from dataclasses import dataclass
 
 from finp import categories, events
@@ -122,6 +123,40 @@ def insert(
     assert cur.lastrowid is not None
     op = get(conn, cur.lastrowid)
     events.bus.publish(events.OPERATION_CREATED, {"id": op.id, "account_id": account_id})
+    return op
+
+
+def create_duplicate(conn: sqlite3.Connection, op_id: int) -> Operation:
+    """Insert a copy of ``op_id`` with a fresh, unique dedup_hash.
+
+    Used to undo a wrongly-skipped import dedup: the user confirms that
+    the incoming row was not actually a duplicate of the existing one,
+    so a second distinct operation is inserted alongside it.
+    """
+    src = get(conn, op_id)
+    nonce = uuid.uuid4().hex
+    base = f"{src.account_id}|{src.date}|{src.montant_cents}|{src.libelle.strip()}"
+    if src.balance_cents is not None:
+        base = f"{base}|{src.balance_cents}"
+    dedup = hashlib.sha256(f"{base}|dup:{nonce}".encode()).hexdigest()
+
+    cur = conn.execute(
+        "INSERT INTO operations"
+        "(account_id, date, montant_cents, libelle, type, dedup_hash, balance_cents)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            src.account_id,
+            src.date,
+            src.montant_cents,
+            src.libelle,
+            src.type,
+            dedup,
+            src.balance_cents,
+        ),
+    )
+    assert cur.lastrowid is not None
+    op = get(conn, cur.lastrowid)
+    events.bus.publish(events.OPERATION_CREATED, {"id": op.id, "account_id": src.account_id})
     return op
 
 
