@@ -62,7 +62,8 @@ export type OperationFilters = {
   types?: OperationType[] | null;
   date_from?: string | null;
   date_to?: string | null;
-  search?: string | null;
+  search_terms?: string[] | null;
+  search_combinator?: "AND" | "OR" | "XOR";
   montant_op?: ">" | "<" | "==" | null;
   montant_value_cents?: number | null;
   recurring_only?: boolean;

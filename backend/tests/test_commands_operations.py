@@ -79,7 +79,7 @@ def test_list_filters_round_trip(conn, acc):
     )
     assert {o["libelle"] for o in r["result"]["items"]} == {"Salaire", "Boulangerie"}
 
-    r = _call(conn, "operations.list", {"search": "café"})
+    r = _call(conn, "operations.list", {"search_terms": ["café"]})
     assert [o["libelle"] for o in r["result"]["items"]] == ["Café"]
 
 

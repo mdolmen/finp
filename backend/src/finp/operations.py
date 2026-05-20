@@ -215,6 +215,29 @@ def _build_fts_query(text: str) -> str:
     return " ".join(f"{tok}*" for tok in tokens)
 
 
+def _term_to_predicate(term: str) -> tuple[str, object] | None:
+    """Compile one search term into a (sql_predicate, bind_param) pair.
+
+    Terms containing ``*`` are routed to a SQL ``LIKE`` on ``libelle``
+    (``*`` becomes ``%``); other terms use the FTS5 prefix index.
+    Returns ``None`` if the term has no searchable content.
+    """
+    stripped = term.strip()
+    if not stripped:
+        return None
+    if "*" in stripped:
+        escaped = stripped.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = escaped.replace("*", "%")
+        return ("libelle LIKE ? ESCAPE '\\'", pattern)
+    fts = _build_fts_query(stripped)
+    if not fts:
+        return None
+    return ("id IN (SELECT rowid FROM operations_fts WHERE operations_fts MATCH ?)", fts)
+
+
+_VALID_COMBINATORS = {"AND", "OR", "XOR"}
+
+
 _MONTANT_OPS = {">", "<", "=="}
 
 
@@ -241,7 +264,8 @@ def list_(
     types: list[OperationType] | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
-    search: str | None = None,
+    search_terms: list[str] | None = None,
+    search_combinator: str = "AND",
     montant_op: str | None = None,
     montant_value_cents: int | None = None,
     recurring_only: bool = False,
@@ -281,11 +305,21 @@ def list_(
         where.append("date <= ?")
         params.append(date_to)
 
-    if search:
-        fts = _build_fts_query(search)
-        if fts:
-            where.append("id IN (SELECT rowid FROM operations_fts WHERE operations_fts MATCH ?)")
-            params.append(fts)
+    if search_terms:
+        if search_combinator not in _VALID_COMBINATORS:
+            raise ValueError(f"invalid search_combinator: {search_combinator!r}")
+        compiled = [c for t in search_terms if (c := _term_to_predicate(t)) is not None]
+        if compiled:
+            preds = [c[0] for c in compiled]
+            term_params = [c[1] for c in compiled]
+            if len(preds) == 1 or search_combinator == "AND":
+                where.append("(" + " AND ".join(preds) + ")")
+            elif search_combinator == "OR":
+                where.append("(" + " OR ".join(preds) + ")")
+            else:  # XOR — exactly one term matches
+                summed = " + ".join(f"({p})" for p in preds)
+                where.append(f"({summed}) = 1")
+            params.extend(term_params)
 
     if montant_op is not None and montant_value_cents is not None:
         if montant_op not in _MONTANT_OPS:

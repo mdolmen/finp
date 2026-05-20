@@ -45,9 +45,19 @@ const DEFAULT_FILTERS: Filters = {
   recurringOnly: false,
 };
 
+type Combinator = "AND" | "OR" | "XOR";
+const COMBINATOR_LABELS: Record<Combinator, string> = { AND: "ET", OR: "OU", XOR: "OUX" };
+const NEXT_COMBINATOR: Record<Combinator, Combinator> = { AND: "OR", OR: "XOR", XOR: "AND" };
+
 export function OperationsPage() {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounced(search, 200);
+  const [searchTerms, setSearchTerms] = useState<string[]>([]);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchCombinator, setSearchCombinator] = useState<Combinator>("OR");
+  const debouncedDraft = useDebounced(searchDraft, 200);
+  const effectiveSearchTerms = useMemo(() => {
+    const draft = debouncedDraft.trim();
+    return draft ? [...searchTerms, draft] : searchTerms;
+  }, [searchTerms, debouncedDraft]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [montantOp, setMontantOp] = useState<">" | "<" | "==">(">");
   const [montantText, setMontantText] = useState("");
@@ -80,7 +90,8 @@ export function OperationsPage() {
     (offset: number) => ({
       types,
       account_ids: selectedAccountIds,
-      search: debouncedSearch.trim() || null,
+      search_terms: effectiveSearchTerms.length ? effectiveSearchTerms : null,
+      search_combinator: searchCombinator,
       include_no_category: filters.uncategorizedOnly,
       recurring_only: filters.recurringOnly,
       category_ids: selectedCategoryIds,
@@ -91,7 +102,7 @@ export function OperationsPage() {
       limit: PAGE_SIZE,
       offset,
     }),
-    [types, selectedAccountIds, selectedCategoryIds, debouncedSearch, filters.uncategorizedOnly, filters.recurringOnly, montantOp, montantCents, dateFrom, dateTo],
+    [types, selectedAccountIds, selectedCategoryIds, effectiveSearchTerms, searchCombinator, filters.uncategorizedOnly, filters.recurringOnly, montantOp, montantCents, dateFrom, dateTo],
   );
 
   const refresh = useCallback(async () => {
@@ -150,8 +161,32 @@ export function OperationsPage() {
   // useMemo'd dep arrays can change reference even when values haven't,
   // which would re-fire the effect and clobber a fresh selection.
 
-  function setSearchAndClear(v: string) {
-    setSearch(v);
+  function setSearchDraftAndClear(v: string) {
+    setSearchDraft(v);
+    setSelected(new Set());
+  }
+
+  function commitSearchDraft() {
+    const v = searchDraft.trim();
+    if (!v) return;
+    setSearchTerms((prev) => [...prev, v]);
+    setSearchDraft("");
+    setSelected(new Set());
+  }
+
+  function removeSearchTerm(index: number) {
+    setSearchTerms((prev) => prev.filter((_, i) => i !== index));
+    setSelected(new Set());
+  }
+
+  function clearSearch() {
+    setSearchTerms([]);
+    setSearchDraft("");
+    setSelected(new Set());
+  }
+
+  function cycleCombinator() {
+    setSearchCombinator((c) => NEXT_COMBINATOR[c]);
     setSelected(new Set());
   }
 
@@ -292,21 +327,60 @@ export function OperationsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <div className="relative max-w-sm">
-          <Input
-            ref={searchRef}
-            value={search}
-            onChange={(e) => setSearchAndClear(e.target.value)}
-            placeholder={t.operations.searchPlaceholder}
-            className="h-8 pr-7"
-            spellCheck={false}
-          />
-          {search && (
+        <div
+          onClick={() => searchRef.current?.focus()}
+          className="relative flex-1 min-w-[24rem] max-w-3xl flex items-stretch gap-1 h-8 rounded-md border border-input bg-transparent pl-1 pr-7 cursor-text focus-within:ring-1 focus-within:ring-ring focus-within:border-ring"
+        >
+          <button
+            type="button"
+            onClick={cycleCombinator}
+            disabled={searchTerms.length === 0}
+            title={t.operations.searchCombinatorTitle}
+            className="self-center shrink-0 h-6 px-2 rounded text-xs font-medium tabular-nums bg-muted text-foreground hover:bg-muted/70 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {COMBINATOR_LABELS[searchCombinator]}
+          </button>
+          <div className="flex flex-1 items-center gap-1 flex-wrap min-w-0">
+            {searchTerms.map((term, i) => (
+              <span
+                key={`${i}-${term}`}
+                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded bg-accent text-accent-foreground text-xs"
+              >
+                <span className="truncate max-w-[12rem]">{term}</span>
+                <button
+                  type="button"
+                  onClick={() => removeSearchTerm(i)}
+                  aria-label={t.operations.searchRemoveChip}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              ref={searchRef}
+              value={searchDraft}
+              onChange={(e) => setSearchDraftAndClear(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitSearchDraft();
+                } else if (e.key === "Backspace" && searchDraft === "" && searchTerms.length > 0) {
+                  e.preventDefault();
+                  removeSearchTerm(searchTerms.length - 1);
+                }
+              }}
+              placeholder={searchTerms.length === 0 ? t.operations.searchPlaceholder : ""}
+              spellCheck={false}
+              className="flex-1 min-w-[6rem] h-6 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          {(searchTerms.length > 0 || searchDraft) && (
             <button
               type="button"
-              onClick={() => setSearchAndClear("")}
+              onClick={clearSearch}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Effacer la recherche"
+              aria-label={t.operations.searchClearAll}
             >
               <X className="size-3.5" />
             </button>

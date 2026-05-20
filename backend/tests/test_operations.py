@@ -125,11 +125,51 @@ def test_search_uses_fts(conn, acc):
         libelle="Boulangerie",
     )
 
-    hits = operations.list_(conn, search="cafe")
+    hits = operations.list_(conn, search_terms=["cafe"])
     assert [o.libelle for o in hits] == ["Café du matin"]
 
-    prefix = operations.list_(conn, search="boul")
+    prefix = operations.list_(conn, search_terms=["boul"])
     assert [o.libelle for o in prefix] == ["Boulangerie"]
+
+
+def test_search_terms_combinators(conn, acc):
+    for libelle in ("Café Paris", "Café Boulanger", "Boulanger Tour", "Tour Eiffel"):
+        operations.insert(
+            conn,
+            account_id=acc.id,
+            date="2026-01-01",
+            montant_cents=-100,
+            libelle=libelle,
+        )
+
+    and_hits = operations.list_(conn, search_terms=["cafe", "boul"], search_combinator="AND")
+    assert {o.libelle for o in and_hits} == {"Café Boulanger"}
+
+    or_hits = operations.list_(conn, search_terms=["cafe", "boul"], search_combinator="OR")
+    assert {o.libelle for o in or_hits} == {"Café Paris", "Café Boulanger", "Boulanger Tour"}
+
+    xor_hits = operations.list_(conn, search_terms=["cafe", "boul"], search_combinator="XOR")
+    assert {o.libelle for o in xor_hits} == {"Café Paris", "Boulanger Tour"}
+
+
+def test_search_terms_substring(conn, acc):
+    operations.insert(
+        conn,
+        account_id=acc.id,
+        date="2026-01-01",
+        montant_cents=-100,
+        libelle="Carrefour Carbone",
+    )
+    operations.insert(
+        conn,
+        account_id=acc.id,
+        date="2026-01-02",
+        montant_cents=-100,
+        libelle="Boulangerie",
+    )
+
+    hits = operations.list_(conn, search_terms=["*arbon*"])
+    assert [o.libelle for o in hits] == ["Carrefour Carbone"]
 
 
 def test_list_pagination(conn, acc):

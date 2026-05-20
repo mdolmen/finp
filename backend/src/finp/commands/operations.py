@@ -65,7 +65,8 @@ class ListParams(BaseModel):
     types: list[str] | None = None
     date_from: str | None = None
     date_to: str | None = None
-    search: str | None = None
+    search_terms: list[str] | None = None
+    search_combinator: Literal["AND", "OR", "XOR"] = "AND"
     montant_op: Literal[">", "<", "=="] | None = None
     montant_value_cents: int | None = None
     recurring_only: bool = False
@@ -127,7 +128,8 @@ def _list(conn: sqlite3.Connection, params: ListParams) -> ListResult:
         types=params.types,
         date_from=params.date_from,
         date_to=params.date_to,
-        search=params.search,
+        search_terms=params.search_terms,
+        search_combinator=params.search_combinator,
         recurring_only=params.recurring_only,
         limit=params.limit + 1,
         offset=params.offset,
