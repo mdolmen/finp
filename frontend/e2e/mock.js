@@ -114,9 +114,16 @@ function dispatch(method, params) {
       const p = params;
       let ops = [...m.operations];
       if (p.types?.length) ops = ops.filter((o) => p.types.includes(o.type));
-      if (p.search) {
-        const q = p.search.toLowerCase();
-        ops = ops.filter((o) => o.libelle.toLowerCase().includes(q));
+      const terms = p.search_terms ?? (p.search ? [p.search] : null);
+      if (terms?.length) {
+        const lower = terms.map((t) => t.toLowerCase());
+        const combinator = p.search_combinator ?? "OR";
+        ops = ops.filter((o) => {
+          const lib = o.libelle.toLowerCase();
+          return combinator === "AND"
+            ? lower.every((q) => lib.includes(q))
+            : lower.some((q) => lib.includes(q));
+        });
       }
       if (p.include_no_category && !p.category_ids?.length) {
         ops = ops.filter((o) => o.category_id === null);
