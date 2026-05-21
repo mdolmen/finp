@@ -272,9 +272,9 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M13.4 — Polish & verification
 
-- [ ] French strings centralised in `frontend/src/i18n/fr.ts` (and English mirror).
-- [ ] Playwright golden path: create automation → import a CSV operation that matches → pending row appears → confirm → mock webhook receives POST.
-- [ ] Document the payload contract in `NOTES.md` (event types, JSON shape, the human-validation guarantee).
+- [x] French strings centralised in `frontend/src/i18n/fr.ts` (and English mirror).
+- [x] Playwright golden path: create automation → import a CSV operation that matches → pending row appears → confirm → mock webhook receives POST.
+- [x] Document the payload contract in `NOTES.md` (event types, JSON shape, the human-validation guarantee).
 
 ---
 

@@ -9,7 +9,55 @@ window.__mock = {
   categories: [{ id: 1, name: "Virement interne", is_builtin: true, display_order: 0 }],
   operations: [],
   rules: [],
+  automations: [],
+  pending: [],
+  webhooks: [],
 };
+
+function predicateMatches(pred, op) {
+  if (pred.kind === "libelle_contains" && pred.text) {
+    return pred.case_sensitive
+      ? op.libelle.includes(pred.text)
+      : op.libelle.toLowerCase().includes(pred.text.toLowerCase());
+  }
+  if (pred.kind === "montant_compare") {
+    const v = Math.abs(op.montant_cents);
+    const t = Math.abs(pred.value_cents);
+    if (pred.operator === ">") return v > t;
+    if (pred.operator === "<") return v < t;
+    if (pred.operator === "==") return v === t;
+  }
+  return false;
+}
+
+function enqueueAutomationsForOp(op) {
+  const m = window.__mock;
+  for (const a of m.automations) {
+    if (!a.enabled) continue;
+    if (a.event_type !== "operation.created") continue;
+    if (!predicateMatches(a.predicate, op)) continue;
+    const exists = m.pending.some(
+      (p) =>
+        p.automation_id === a.id &&
+        p.operation_id === op.id &&
+        p.status === "pending",
+    );
+    if (exists) continue;
+    m.pending.push({
+      id: nextId(),
+      automation_id: a.id,
+      automation_name: a.name,
+      callback_url: a.callback_url,
+      event_type: a.event_type,
+      operation_id: op.id,
+      payload: { id: op.id, account_id: op.account_id },
+      status: "pending",
+      error: null,
+      created_at: now(),
+      resolved_at: null,
+    });
+  }
+}
 
 function now() {
   return new Date().toISOString();
@@ -171,7 +219,7 @@ function dispatch(method, params) {
           continue;
         }
         const id = nextId();
-        m.operations.push({
+        const newOp = {
           id,
           account_id: accountId,
           date: row.date,
@@ -182,7 +230,9 @@ function dispatch(method, params) {
           dedup_hash: `h${id}`,
           created_at: now(),
           recurring: "none",
-        });
+        };
+        m.operations.push(newOp);
+        enqueueAutomationsForOp(newOp);
         imported++;
       }
       const acc = m.accounts.find((a) => a.id === accountId);
@@ -256,6 +306,72 @@ function dispatch(method, params) {
 
     case "tink.has_connection":
       return { connected: false };
+
+    case "automations.list":
+      return m.automations;
+
+    case "automations.create": {
+      const a = {
+        id: nextId(),
+        name: params.name,
+        event_type: params.event_type,
+        predicate: params.predicate,
+        callback_url: params.callback_url,
+        enabled: params.enabled ?? true,
+        created_at: now(),
+      };
+      m.automations.push(a);
+      return a;
+    }
+
+    case "automations.toggle": {
+      const a = m.automations.find((x) => x.id === params.id);
+      if (a) a.enabled = params.enabled;
+      return a;
+    }
+
+    case "automations.delete":
+      m.automations = m.automations.filter((x) => x.id !== params.id);
+      return null;
+
+    case "automations.pending.list":
+      return m.pending.filter((p) => p.status === "pending");
+
+    case "automations.pending.confirm": {
+      const item = m.pending.find((p) => p.id === params.id);
+      if (!item) return null;
+      m.webhooks.push({
+        url: item.callback_url,
+        body: {
+          automation: { id: item.automation_id, name: item.automation_name },
+          event: { type: item.event_type, payload: item.payload },
+          pending_id: item.id,
+          confirmed_at: null,
+        },
+      });
+      item.status = "sent";
+      item.resolved_at = now();
+      return { ...item };
+    }
+
+    case "automations.pending.refuse": {
+      const item = m.pending.find((p) => p.id === params.id);
+      if (!item) return null;
+      item.status = "refused";
+      item.resolved_at = now();
+      return { ...item };
+    }
+
+    case "automations.history.list": {
+      let rows = m.pending.filter((p) => p.status !== "pending");
+      if (params.status && params.status !== "all") {
+        rows = rows.filter((p) => p.status === params.status);
+      }
+      rows = [...rows].sort((a, b) =>
+        (b.resolved_at ?? "").localeCompare(a.resolved_at ?? ""),
+      );
+      return rows.slice(0, params.limit ?? 20);
+    }
 
     default:
       console.warn(`[mock] unhandled: ${method}`, params);

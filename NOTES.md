@@ -105,13 +105,30 @@ The UI is minimalist:
 
 #### Page "Automatisations"
 
-The possibility to connect to an automation infrastrcuture. We will connect to n8n.
+Bridges the in-process event bus to outbound HTTP webhooks (n8n primary target, but the URL is free-form). Every dispatch is **human-validated**: a match is queued as a pending row and the POST only fires when the user clicks the green ✓. Refused entries are kept in history; no event leaves the machine without an explicit click.
 
-This page will show the workflows.
+The page is split into three collapsible sections:
+1. **À valider** — pending rows, each with a red ✕ / green ✓ split pill plus a Détails button that shows the JSON payload that would be sent.
+2. **Règles d'automatisation** — the configured automations (event type + predicate + callback URL + enabled flag).
+3. **Historique** — the last 20 resolved rows (sent / failed / refused), filterable. Failed rows have a Retry button that re-fires the same webhook.
 
-We will implement that later as an improvement of the tool but we need to think the architecture to easily allow this kind of extension. I think we need to define events (e.g. operations updated, category assigned to an operation, etc.) so we can trigger the automation workflow (if it's configured only). That way if there is no automation configured, there is nothing to do. And there is a single place to check "do we trigger a workflow or not".
+V1 only matches events that carry an operation: `operation.created`, `operation.updated`, `operation.category_assigned`, `rule.matched`. The predicate vocabulary is shared with the Règles page (`libellé contient`, `montant >|<|=`).
 
-For now this page does not have to be in the sidebar.
+**Webhook payload contract** — what `automations.pending.confirm` POSTs to the callback URL:
+
+```json
+{
+  "automation": { "id": 7, "name": "Notify Slack on large purchases" },
+  "event": {
+    "type": "operation.created",
+    "payload": { "id": 1234, "account_id": 1 }
+  },
+  "pending_id": 42,
+  "confirmed_at": null
+}
+```
+
+The `event.payload` is the exact dict published on the in-process bus, unmodified. Receivers should treat `pending_id` as the idempotency key.
 
 #### Page "Previsions"
 

@@ -55,12 +55,41 @@ type MockRule = {
   created_at: string;
 };
 
+type MockAutomation = {
+  id: number;
+  name: string;
+  event_type: string;
+  predicate: { kind: string; text?: string; case_sensitive?: boolean; operator?: string; value_cents?: number };
+  callback_url: string;
+  enabled: boolean;
+  created_at: string;
+};
+
+type MockPending = {
+  id: number;
+  automation_id: number;
+  automation_name: string;
+  callback_url: string;
+  event_type: string;
+  operation_id: number | null;
+  payload: Record<string, unknown>;
+  status: "pending" | "sent" | "failed" | "refused";
+  error: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+type MockWebhookCall = { url: string; body: Record<string, unknown> };
+
 type MockState = {
   nextId: number;
   accounts: MockAcc[];
   categories: MockCat[];
   operations: MockOp[];
   rules: MockRule[];
+  automations: MockAutomation[];
+  pending: MockPending[];
+  webhooks: MockWebhookCall[];
 };
 
 window.__mock = {
@@ -69,6 +98,9 @@ window.__mock = {
   categories: [{ id: 1, name: "Virement interne", is_builtin: true, display_order: 0 }],
   operations: [],
   rules: [],
+  automations: [],
+  pending: [],
+  webhooks: [],
 };
 
 function now() {
