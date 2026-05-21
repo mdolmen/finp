@@ -1,1 +1,0 @@
-"""Tink open-banking integration."""

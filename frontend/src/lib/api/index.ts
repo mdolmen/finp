@@ -14,13 +14,13 @@ export type {
 } from "./bilan";
 export { plannedApi } from "./planned";
 export type { PlannedOperation } from "./planned";
-export { tinkApi } from "./tink";
+export { gocardlessApi } from "./gocardless";
 export type {
-  TinkCredentials,
-  TinkEnvironment,
-  StartOAuthResult,
-  OAuthStatusResult,
-  OAuthStatus,
-  TinkAccount,
-} from "./tink";
+  GoCardlessCredentials,
+  Institution,
+  CreateRequisitionResult,
+  RequisitionStatus,
+  RequisitionStatusResult,
+  GcAccount,
+} from "./gocardless";
 export type * from "./types";

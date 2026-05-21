@@ -12,8 +12,9 @@ export type Account = {
   initial_balance_cents: number;
   initial_balance_date: string | null;
   current_balance_cents: number;
-  tink_account_id: string | null;
-  tink_last_sync_at: string | null;
+  gocardless_account_id: string | null;
+  gocardless_requisition_id: string | null;
+  gocardless_last_sync_at: string | null;
 };
 
 export type Category = {

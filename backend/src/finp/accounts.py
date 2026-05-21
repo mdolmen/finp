@@ -33,8 +33,9 @@ class Account:
     # Running solde: initial balance + every operation on or after the
     # opening date (or every operation if no opening date is set).
     current_balance_cents: int
-    tink_account_id: str | None
-    tink_last_sync_at: str | None
+    gocardless_account_id: str | None
+    gocardless_requisition_id: str | None
+    gocardless_last_sync_at: str | None
 
 
 def _row_to_account(row: sqlite3.Row) -> Account:
@@ -48,14 +49,16 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         initial_balance_cents=row["initial_balance_cents"],
         initial_balance_date=row["initial_balance_date"],
         current_balance_cents=row["current_balance_cents"],
-        tink_account_id=row["tink_account_id"],
-        tink_last_sync_at=row["tink_last_sync_at"],
+        gocardless_account_id=row["gocardless_account_id"],
+        gocardless_requisition_id=row["gocardless_requisition_id"],
+        gocardless_last_sync_at=row["gocardless_last_sync_at"],
     )
 
 
 _SELECT_ACCOUNT = (
     "SELECT a.id, a.name, a.csv_mapping_json, a.created_at,"
-    " a.initial_balance_cents, a.initial_balance_date, a.tink_account_id, a.tink_last_sync_at,"
+    " a.initial_balance_cents, a.initial_balance_date,"
+    " a.gocardless_account_id, a.gocardless_requisition_id, a.gocardless_last_sync_at,"
     " (SELECT MAX(o.created_at) FROM operations o WHERE o.account_id = a.id) AS last_import_at,"
     " a.initial_balance_cents + COALESCE("
     "   (SELECT SUM(o.montant_cents) FROM operations o"

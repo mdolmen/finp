@@ -28,11 +28,11 @@ from finp import __version__, db
 from finp.commands import accounts as account_cmds
 from finp.commands import bilan as bilan_cmds
 from finp.commands import categories as category_cmds
+from finp.commands import gocardless as gocardless_cmds
 from finp.commands import imports as import_cmds
 from finp.commands import operations as operation_cmds
 from finp.commands import planned_operations as planned_cmds
 from finp.commands import rules as rule_cmds
-from finp.commands import tink as tink_cmds
 from finp.commands._base import Command, EmptyParams
 from finp.errors import AppError, to_app_error
 from finp.log import enable_debug
@@ -54,7 +54,7 @@ METHODS: dict[str, Command] = {
     **import_cmds.METHODS,
     **bilan_cmds.METHODS,
     **planned_cmds.METHODS,
-    **tink_cmds.METHODS,
+    **gocardless_cmds.METHODS,
 }
 
 

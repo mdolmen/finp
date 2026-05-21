@@ -196,25 +196,41 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M12.4 — Global toast / error system
 
-- [ ] Add `Sonner` (shadcn toast) at the app root; expose a `useToast` hook.
-- [ ] Remove per-page `error` state and replace with calls to the central toast.
-- [ ] Standardise: RPC domain errors → named toast with `appCode`-keyed message; unexpected errors → generic "Une erreur est survenue" with a copy-to-clipboard detail button.
+- [x] Add `Sonner` (shadcn toast) at the app root; expose a `useToast` hook.
+- [x] Remove per-page `error` state and replace with calls to the central toast.
+- [x] Standardise: RPC domain errors → named toast with `appCode`-keyed message; unexpected errors → generic "Une erreur est survenue" with a copy-to-clipboard detail button.
 
 ### M12.5 — RPC debug logging
 
-- [ ] `--debug` flag on the Python sidecar: when set, log every request and response (method, params, result or error) to stderr with timestamps.
-- [ ] Tauri passes the flag when built in debug mode; strips it in release.
-- [ ] Log file rotated to `{data_dir}/finp-debug.log`; last 5 MB kept.
+- [x] `--debug` flag on the Python sidecar: when set, log every request and response (method, params, result or error) to stderr with timestamps.
+- [x] Tauri passes the flag when built in debug mode; strips it in release.
+- [x] Log file rotated to `{data_dir}/finp-debug.log`; last 5 MB kept.
 
 ### M12.6 — Bank sync (GoCardless)
 
-> Evaluate GoCardless Bank Account Data (formerly Nordigen) as the primary open-banking provider. Same OAuth + redirect pattern as the parked Tink backend, generous free tier, no per-connection fee at small scale. If the evaluation is positive, build the integration from scratch rather than adapting the Tink code.
+> Replace the parked Tink backend with GoCardless Bank Account Data (ex-Nordigen). Same PSD2 constraints as Tink (90-day reconsent, T+1 freshness) but with a self-serve free tier that doesn't require a sales conversation. Build from scratch rather than adapting the Tink code.
 
-- [ ] Evaluate: free-tier limits, supported FR banks, ToS for distributing credentials in a desktop binary, data freshness (T+1 vs real-time).
-- [ ] If approved — new `finp.gocardless` module mirroring the structure of `finp.tink` (`auth`, `client`, `sync`).
-- [ ] OAuth flow: same localhost callback pattern (port configurable, not hardcoded).
-- [ ] Sync pipeline: converges on the same `operations` ingestion path as CSV import and Tink.
-- [ ] Frontend: Comptes page — [Connecter] button, link dialog, per-account [Synchroniser] with last-sync timestamp and result toast.
+**Architecture: Option A — user-supplied credentials, no server.** Each user signs up for their own free GoCardless BAD account and pastes `secret_id`/`secret_key` into a settings modal. The desktop app talks to GoCardless directly. Bank data flows bank → GoCardless → user's machine; we never see it. Same posture as the Tink settings modal.
+
+Build order:
+
+- [ ] **Schema migration**
+    - [ ] Drop Tink tables (`tink_credentials`, `tink_tokens`) and the `tink_account_id` / `tink_last_sync_at` columns on `accounts`.
+    - [ ] Add `gocardless_credentials(secret_id, secret_key)`, `gocardless_tokens(access_token, refresh_token, expires_at)`.
+    - [ ] Add `gocardless_account_id TEXT`, `gocardless_last_sync_at TEXT` to `accounts`.
+- [ ] **`finp.gocardless` module** (clean room, not adapted from Tink)
+    - [ ] `credentials.py` — read/write `secret_id` + `secret_key`.
+    - [ ] `auth.py` — token endpoint (`/api/v2/token/new/`), refresh, transparent reauth before any call.
+    - [ ] `client.py` — httpx wrapper. Endpoints: `list_institutions(country='fr')`, `create_requisition(institution_id, redirect_uri)`, `list_accounts(requisition_id)`, `get_transactions(account_id, date_from=None)`.
+    - [ ] `sync.py` — `sync_account(account_id)`: fetch transactions since `gocardless_last_sync_at` (omit `date_from` on first sync). Use `transactionId` as `dedup_hash`. Map `bookingDate` → date, `transactionAmount.amount × 100` → montant_cents, `remittanceInformationUnstructured` (fallback `creditorName`/`debtorName`) → libellé. Ignore `pending` array (no `transactionId`, can't dedup). Push through existing ingestion path (dedup + rules).
+- [ ] **OAuth / requisition flow** — Tauri opens browser to GoCardless requisition link → localhost callback (configurable port, not hardcoded) → backend persists requisition + accounts list.
+- [ ] **IPC commands**: `gocardless.get_credentials`, `gocardless.save_credentials`, `gocardless.list_institutions`, `gocardless.create_requisition`, `gocardless.handle_oauth_callback`, `gocardless.list_gocardless_accounts`, `gocardless.link_account`, `gocardless.sync_account`.
+- [ ] **Frontend — Comptes page**
+    - [ ] Settings modal (gear icon): `secret_id` + `secret_key` inputs, link to GoCardless signup.
+    - [ ] Institution picker (FR banks list, searchable) → [Connecter] → browser → callback → link dialog mapping GoCardless accounts to finp accounts.
+    - [ ] Per-account [Synchroniser] with last-sync timestamp, spinner, result toast (imported / skipped / failed).
+- [ ] **Tear down Tink**: delete `finp.tink` package, its IPC surface, and any frontend remnants.
+- [x] **Verify before shipping**: confirm GoCardless BAD ToS allows the user-supplied-credentials pattern in a distributed/open-source desktop binary, and pin the current free-tier ceiling (active-connection limit) in this TODO.
 
 ### M12.7 — Onboarding & empty states
 
