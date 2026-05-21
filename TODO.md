@@ -227,13 +227,63 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ---
 
+## M13 — Page "Automatisations" (n8n, human-validated)
+
+> Surfaces the in-process event bus as outbound HTTP webhooks. Every match is human-validated before the callback fires — no event leaves the machine without an explicit click. n8n endpoints are the primary target but the URL is free-form.
+
+### M13.1 — Schema & domain
+
+- [x] Migration `0011_automations.sql`:
+    - [x] `automations(id, name, event_type TEXT, predicate_json, callback_url, enabled, created_at)` — `predicate_json` reuses the same serialization as `rules` (`LibelleContains`, `MontantCompare`, future combinators).
+    - [x] `automation_pending(id, automation_id, event_type, event_payload_json, created_at, status TEXT CHECK in ('pending','sent','failed','refused'), resolved_at NULL, error NULL)` — rows are never hard-deleted (refuse just flips `status='refused'`); rows leave the "À valider" section once `status != 'pending'` and become history.
+- [x] `finp.automations` module:
+    - [x] `crud.py` — list / create / update / delete / toggle.
+    - [x] `matcher.py` — given `(event_type, payload)`, return automations whose `event_type` matches and whose predicate matches the embedded operation (skip if event has no operation).
+    - [x] `queue.py` — enqueue pending row, list pending, list history (with status filter + limit), confirm (→ webhook, status `sent`/`failed`), refuse (status `refused`).
+    - [x] `webhook.py` — single `httpx.post(callback_url, json=payload, timeout=5s)`; updates the pending row to `sent` or `failed` with error string. No automatic retry in v1.
+- [x] V1 predicate restriction: only events carrying an `operation` (`operation.created`, `operation.updated`, `operation.category_assigned`, `rule.matched`). Documented in the module docstring.
+- [x] Wire a `finp.events` subscriber at app startup: every published event → `matcher.match()` → `queue.enqueue()` per match. Dedup on `(automation_id, event_id)` so re-emitting the same event doesn't double-enqueue.
+- [x] Unit tests: predicate match per event type, dedup, confirm posts the right payload and flips to `sent`, refuse flips to `refused`, failed webhook leaves the row in `failed` with error captured, history list respects status filter + limit.
+
+### M13.2 — IPC surface
+
+- [ ] Commands under `automations.*`:
+    - [ ] `list`, `create`, `update`, `delete`, `toggle(id, enabled)`.
+    - [ ] `pending.list` → `[{id, automation_name, event_type, event_summary, payload, created_at, status, error?}]` (status = `pending` only).
+    - [ ] `pending.confirm(id)` → fires the webhook, returns `{status, error?}`.
+    - [ ] `pending.refuse(id)`.
+    - [ ] `history.list({status?: 'sent'|'failed'|'refused'|'all', limit=20})` → most-recent-first; default `all`, default limit 20.
+- [ ] Pydantic models at the boundary; matching TS types in `frontend/src/lib/api/types.ts`; thin `invoke()` wrappers in `frontend/src/lib/api/automations.ts`.
+- [ ] Emit a Tauri event `automation.pending` when a new row is enqueued so the frontend can bump a counter / refetch without polling.
+
+### M13.3 — Frontend page & sidebar
+
+- [ ] Route `/automatisations`; sidebar entry between `Opérations` and the separator (above `Catégories`).
+- [ ] Sidebar badge with pending count when > 0.
+- [ ] Page layout: three stacked **collapsible sections** (shadcn `Collapsible`), pending expanded by default when count > 0, rules expanded by default, history collapsed by default.
+    - [ ] **Section 1 — À valider**: list of pending rows. Each row shows automation name, event summary (date + montant + libellé for operation events), and a **split pill** action: red ✕ (refuse) on the left, green ✓ (confirm) on the right. A **Détails** button opens a side sheet / dialog showing the full JSON payload that will be POSTed.
+    - [ ] **Section 2 — Règles d'automatisation**: table with columns `Événement | Condition(s) | Callback | Activée | actions`. Bottom-of-list **[Ajouter]** button opens a modal (event-type select, predicate builder reusing the Rules modal's component, URL input with basic validation, enabled toggle). Inline edit / delete per row.
+    - [ ] **Section 3 — Historique** (collapsed by default): last 20 resolved entries, most-recent-first, with a small segmented filter `Tout | Envoyées | Échouées | Refusées`. Each row shows automation name, event summary, resolved-at timestamp, and a status pill (`sent` green, `failed` red, `refused` muted). Détails button reuses the same payload sheet as the pending section. Failed rows expose a retry button (re-runs `pending.confirm`).
+- [ ] Empty states:
+    - [ ] Pending: "Aucune action en attente."
+    - [ ] Rules: "Aucune automatisation. Ajoutez-en une pour recevoir des notifications lorsqu'une opération correspond."
+    - [ ] Historique: "Aucun événement traité pour le moment."
+- [ ] Confirm / refuse actions: optimistic remove from pending list (row reappears in history once refetched), toast on success/failure.
+
+### M13.4 — Polish & verification
+
+- [ ] French strings centralised in `frontend/src/i18n/fr.ts` (and English mirror).
+- [ ] Playwright golden path: create automation → import a CSV operation that matches → pending row appears → confirm → mock webhook receives POST.
+- [ ] Document the payload contract in `NOTES.md` (event types, JSON shape, the human-validation guarantee).
+
+---
+
 ## Later (planned, not v1)
 
-### Page "Automatisations" (n8n)
+### Page "Automatisations"
 
-- [ ] Surface the existing event bus over an outbound HTTP webhook adapter, configured per event type.
-- [ ] UI to list configured workflows, last-trigger status.
-- [ ] Add a sidebar entry once functional.
+- [ ] V2 handling of http requests
+    - an async worker to send the requests which waits the answer and stores the response code
 
 ### Page "Immobilier"
 

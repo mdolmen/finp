@@ -16,6 +16,7 @@ def test_migrate_creates_schema_and_seeds_builtin():
         "0008_operation_recurring_type.sql",
         "0009_operation_balance.sql",
         "0010_gocardless.sql",
+        "0011_automations.sql",
     ]
 
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
