@@ -219,11 +219,11 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M12.7 — Onboarding & empty states
 
-- [ ] Each page that can be empty shows a contextual empty state (not a blank screen):
-    - Bilan: "Importez un relevé ou connectez votre banque pour voir votre bilan."
-    - Opérations: "Aucune opération ne correspond à ces filtres." (vs. "Aucune opération — commencez par importer un relevé.")
-    - Catégories / Règles: brief hint on what they're for.
-- [ ] First-run flow: if DB has zero accounts, Bilan redirects to Comptes with a prominent call-to-action.
+- [x] Each page that can be empty shows a contextual empty state (not a blank screen):
+    - Bilan / Opérations: redirect to Comptes when DB has zero accounts (no inline blank-state copy needed — Comptes is the landing).
+    - Opérations: distinguish "Aucune opération ne correspond aux filtres" (filters active) from "Aucune opération. Importez un relevé depuis la page Comptes pour commencer" (filters at default).
+    - Catégories / Règles: append a one-line hint explaining what they're for.
+- [x] First-run flow: if DB has zero accounts, Bilan and Opérations both redirect to Comptes; Comptes empty state is a centered card with explanatory text and a primary "Créer un compte" CTA.
 
 ---
 

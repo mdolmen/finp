@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Repeat, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,32 @@ export function OperationsPage() {
   }, [filters]);
 
   const montantCents = useMemo(() => parseEurosToCents(debouncedMontant), [debouncedMontant]);
+
+  // True when any user-controlled filter is non-default. Drives the empty-state
+  // copy: filtered-empty vs nothing-imported-yet.
+  const filtersActive = useMemo(
+    () =>
+      effectiveSearchTerms.length > 0 ||
+      filters.debit !== DEFAULT_FILTERS.debit ||
+      filters.credit !== DEFAULT_FILTERS.credit ||
+      filters.internal !== DEFAULT_FILTERS.internal ||
+      filters.uncategorizedOnly ||
+      filters.recurringOnly ||
+      montantCents !== null ||
+      dateFrom !== "" ||
+      dateTo !== "" ||
+      (selectedCategoryIds !== null && selectedCategoryIds.length > 0) ||
+      (selectedAccountIds !== null && selectedAccountIds.length > 0),
+    [
+      effectiveSearchTerms,
+      filters,
+      montantCents,
+      dateFrom,
+      dateTo,
+      selectedCategoryIds,
+      selectedAccountIds,
+    ],
+  );
 
   const buildFilters = useCallback(
     (offset: number) => ({
@@ -303,19 +329,12 @@ export function OperationsPage() {
     }
   }
 
-  if (accounts !== null && accounts.length === 0) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
-        <p className="text-sm text-muted-foreground">{t.emptyState.operations}</p>
-        <Link
-          to="/comptes"
-          className="text-sm font-medium underline underline-offset-4 hover:text-foreground text-muted-foreground"
-        >
-          {t.emptyState.createAccount}
-        </Link>
-      </div>
-    );
-  }
+  const navigate = useNavigate();
+  const noAccounts = accounts !== null && accounts.length === 0;
+  useEffect(() => {
+    if (noAccounts) navigate("/comptes", { replace: true });
+  }, [noAccounts, navigate]);
+  if (noAccounts) return null;
 
   return (
     <div className="px-6 py-5 flex flex-col h-full">
@@ -498,6 +517,7 @@ export function OperationsPage() {
         onToggleSelect={toggleSelect}
         onToggleSelectAll={toggleSelectAll}
         bottomBarVisible={selected.size > 0}
+        filtersActive={filtersActive}
       />
 
       {hasMore && (
@@ -724,6 +744,7 @@ function OperationsList({
   onToggleSelect,
   onToggleSelectAll,
   bottomBarVisible,
+  filtersActive,
 }: {
   ops: Operation[] | null;
   cats: Category[];
@@ -733,12 +754,17 @@ function OperationsList({
   onToggleSelect: (opId: number, checked: boolean) => void;
   onToggleSelectAll: (checked: boolean) => void;
   bottomBarVisible: boolean;
+  filtersActive: boolean;
 }) {
   if (ops === null) {
     return <p className="text-sm text-muted-foreground">{t.common.loading}</p>;
   }
   if (ops.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t.operations.empty}</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        {filtersActive ? t.operations.empty : t.emptyState.operationsNoImports}
+      </p>
+    );
   }
 
   const allSelected = ops.length > 0 && ops.every((o) => selected.has(o.id));

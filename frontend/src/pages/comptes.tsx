@@ -75,7 +75,16 @@ export function ComptesPage() {
       {accounts === null ? (
         <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : accounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.comptes.empty}</p>
+        <div className="border border-border rounded-md px-6 py-8 text-center space-y-3">
+          <h2 className="text-base font-medium">{t.emptyState.comptesTitle}</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            {t.emptyState.comptesBody}
+          </p>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="size-3.5" />
+            {t.emptyState.createAccount}
+          </Button>
+        </div>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-md">
           {accounts.map((acc) => (

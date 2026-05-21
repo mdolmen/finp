@@ -151,7 +151,10 @@ export function ReglesPage() {
       {rules === null ? (
         <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : rules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.regles.empty}</p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{t.regles.empty}</p>
+          <p className="text-xs text-muted-foreground">{t.emptyState.reglesHint}</p>
+        </div>
       ) : (
         <div className="space-y-5">
           {groups.map(({ category, rules: groupRules }) => (

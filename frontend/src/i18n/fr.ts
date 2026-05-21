@@ -200,6 +200,13 @@ export const fr = {
     bilan: "Créez un compte pour commencer",
     operations: "Créez un compte pour commencer",
     createAccount: "Créer un compte",
+    comptesTitle: "Bienvenue dans Finances Personnelles",
+    comptesBody:
+      "Pour commencer, créez un compte (par exemple votre compte courant), puis importez un relevé CSV.",
+    operationsNoImports: "Aucune opération. Importez un relevé depuis la page Comptes pour commencer.",
+    categoriesHint: "Les catégories servent à classer vos opérations (alimentation, loyer, etc.).",
+    reglesHint:
+      "Les règles classent automatiquement vos opérations selon leur libellé ou leur montant.",
   },
   errorBoundary: {
     title: "Quelque chose s'est mal passé",

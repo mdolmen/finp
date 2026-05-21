@@ -68,7 +68,10 @@ export function CategoriesPage() {
       {cats === null ? (
         <p className="text-sm text-muted-foreground">{t.common.loading}</p>
       ) : cats.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.categories.empty}</p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{t.categories.empty}</p>
+          <p className="text-xs text-muted-foreground">{t.emptyState.categoriesHint}</p>
+        </div>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-md">
           {cats.map((cat) => (

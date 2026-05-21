@@ -190,6 +190,15 @@ export const en = {
     bilan: "Create an account to get started",
     operations: "Create an account to get started",
     createAccount: "Create an account",
+    comptesTitle: "Welcome to Finances Personnelles",
+    comptesBody:
+      "To get started, create an account (for example your checking account), then import a CSV statement.",
+    operationsNoImports:
+      "No operations yet. Import a CSV statement from the Comptes page to get started.",
+    categoriesHint:
+      "Categories let you classify your operations (groceries, rent, etc.).",
+    reglesHint:
+      "Rules automatically classify your operations based on their description or amount.",
   },
   errorBoundary: {
     title: "Something went wrong",
