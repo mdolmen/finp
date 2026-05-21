@@ -258,17 +258,17 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M13.3 — Frontend page & sidebar
 
-- [ ] Route `/automatisations`; sidebar entry between `Opérations` and the separator (above `Catégories`).
-- [ ] Sidebar badge with pending count when > 0.
-- [ ] Page layout: three stacked **collapsible sections** (shadcn `Collapsible`), pending expanded by default when count > 0, rules expanded by default, history collapsed by default.
-    - [ ] **Section 1 — À valider**: list of pending rows. Each row shows automation name, event summary (date + montant + libellé for operation events), and a **split pill** action: red ✕ (refuse) on the left, green ✓ (confirm) on the right. A **Détails** button opens a side sheet / dialog showing the full JSON payload that will be POSTed.
-    - [ ] **Section 2 — Règles d'automatisation**: table with columns `Événement | Condition(s) | Callback | Activée | actions`. Bottom-of-list **[Ajouter]** button opens a modal (event-type select, predicate builder reusing the Rules modal's component, URL input with basic validation, enabled toggle). Inline edit / delete per row.
-    - [ ] **Section 3 — Historique** (collapsed by default): last 20 resolved entries, most-recent-first, with a small segmented filter `Tout | Envoyées | Échouées | Refusées`. Each row shows automation name, event summary, resolved-at timestamp, and a status pill (`sent` green, `failed` red, `refused` muted). Détails button reuses the same payload sheet as the pending section. Failed rows expose a retry button (re-runs `pending.confirm`).
-- [ ] Empty states:
-    - [ ] Pending: "Aucune action en attente."
-    - [ ] Rules: "Aucune automatisation. Ajoutez-en une pour recevoir des notifications lorsqu'une opération correspond."
-    - [ ] Historique: "Aucun événement traité pour le moment."
-- [ ] Confirm / refuse actions: optimistic remove from pending list (row reappears in history once refetched), toast on success/failure.
+- [x] Route `/automatisations`; sidebar entry between `Opérations` and the separator (above `Catégories`).
+- [x] Sidebar badge with pending count when > 0.
+- [x] Page layout: three stacked **collapsible sections** (shadcn `Collapsible`), pending expanded by default when count > 0, rules expanded by default, history collapsed by default.
+    - [x] **Section 1 — À valider**: list of pending rows. Each row shows automation name, event summary (date + montant + libellé for operation events), and a **split pill** action: red ✕ (refuse) on the left, green ✓ (confirm) on the right. A **Détails** button opens a side sheet / dialog showing the full JSON payload that will be POSTed.
+    - [x] **Section 2 — Règles d'automatisation**: table with columns `Événement | Condition(s) | Callback | Activée | actions`. Bottom-of-list **[Ajouter]** button opens a modal (event-type select, predicate builder reusing the Rules modal's component, URL input with basic validation, enabled toggle). Inline edit / delete per row.
+    - [x] **Section 3 — Historique** (collapsed by default): last 20 resolved entries, most-recent-first, with a small segmented filter `Tout | Envoyées | Échouées | Refusées`. Each row shows automation name, event summary, resolved-at timestamp, and a status pill (`sent` green, `failed` red, `refused` muted). Détails button reuses the same payload sheet as the pending section. Failed rows expose a retry button (re-runs `pending.confirm`).
+- [x] Empty states:
+    - [x] Pending: "Aucune action en attente."
+    - [x] Rules: "Aucune automatisation. Ajoutez-en une pour recevoir des notifications lorsqu'une opération correspond."
+    - [x] Historique: "Aucun événement traité pour le moment."
+- [x] Confirm / refuse actions: optimistic remove from pending list (row reappears in history once refetched), toast on success/failure.
 
 ### M13.4 — Polish & verification
 
