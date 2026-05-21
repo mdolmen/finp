@@ -25,7 +25,9 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from finp import __version__, db
+from finp import automations as automations_mod
 from finp.commands import accounts as account_cmds
+from finp.commands import automations as automation_cmds
 from finp.commands import bilan as bilan_cmds
 from finp.commands import categories as category_cmds
 from finp.commands import gocardless as gocardless_cmds
@@ -55,6 +57,7 @@ METHODS: dict[str, Command] = {
     **bilan_cmds.METHODS,
     **planned_cmds.METHODS,
     **gocardless_cmds.METHODS,
+    **automation_cmds.METHODS,
 }
 
 
@@ -129,6 +132,7 @@ def _open_db() -> sqlite3.Connection:
     path = os.environ.get("FINP_DB_PATH") or db.default_db_path()
     conn = db.connect(path)
     db.migrate(conn)
+    automations_mod.install_subscriber(conn)
     return conn
 
 

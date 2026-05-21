@@ -247,14 +247,14 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M13.2 — IPC surface
 
-- [ ] Commands under `automations.*`:
-    - [ ] `list`, `create`, `update`, `delete`, `toggle(id, enabled)`.
-    - [ ] `pending.list` → `[{id, automation_name, event_type, event_summary, payload, created_at, status, error?}]` (status = `pending` only).
-    - [ ] `pending.confirm(id)` → fires the webhook, returns `{status, error?}`.
-    - [ ] `pending.refuse(id)`.
-    - [ ] `history.list({status?: 'sent'|'failed'|'refused'|'all', limit=20})` → most-recent-first; default `all`, default limit 20.
-- [ ] Pydantic models at the boundary; matching TS types in `frontend/src/lib/api/types.ts`; thin `invoke()` wrappers in `frontend/src/lib/api/automations.ts`.
-- [ ] Emit a Tauri event `automation.pending` when a new row is enqueued so the frontend can bump a counter / refetch without polling.
+- [x] Commands under `automations.*`:
+    - [x] `list`, `create`, `update`, `delete`, `toggle(id, enabled)`.
+    - [x] `pending.list` → `[{id, automation_name, event_type, event_summary, payload, created_at, status, error?}]` (status = `pending` only).
+    - [x] `pending.confirm(id)` → fires the webhook, returns `{status, error?}`.
+    - [x] `pending.refuse(id)`.
+    - [x] `history.list({status?: 'sent'|'failed'|'refused'|'all', limit=20})` → most-recent-first; default `all`, default limit 20.
+- [x] Pydantic models at the boundary; matching TS types in `frontend/src/lib/api/types.ts`; thin `invoke()` wrappers in `frontend/src/lib/api/automations.ts`.
+- [ ] Emit a Tauri event `automation.pending` when a new row is enqueued so the frontend can bump a counter / refetch without polling. *(v1 polls on focus + after each mutation; deferred.)*
 
 ### M13.3 — Frontend page & sidebar
 

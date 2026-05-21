@@ -14,6 +14,14 @@ export type {
 } from "./bilan";
 export { plannedApi } from "./planned";
 export type { PlannedOperation } from "./planned";
+export { automationsApi } from "./automations";
+export type {
+  Automation,
+  AutomationEventType,
+  AutomationPending,
+  HistoryStatusFilter,
+  PendingStatus,
+} from "./automations";
 export { gocardlessApi } from "./gocardless";
 export type {
   GoCardlessCredentials,
