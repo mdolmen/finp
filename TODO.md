@@ -208,29 +208,14 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 ### M12.6 — Bank sync (GoCardless)
 
-> Replace the parked Tink backend with GoCardless Bank Account Data (ex-Nordigen). Same PSD2 constraints as Tink (90-day reconsent, T+1 freshness) but with a self-serve free tier that doesn't require a sales conversation. Build from scratch rather than adapting the Tink code.
+> **Parked.** Like Tink before it, GoCardless Bank Account Data turned out not to be self-serve for individual developers in practice: the dashboard sign-up funnel redirects to the Payments product on `auth0.gocardless.com` (Direct Debit merchant accounts), and the actual BAD developer signup is gated behind dead URLs / a contact form. We hit the same wall that parked M11. The backend code (`finp.gocardless` package, IPC commands, migration 0010) is complete and preserved; only the UI entry points on the Comptes page are removed. CSV import remains the only supported ingestion path.
 
-**Architecture: Option A — user-supplied credentials, no server.** Each user signs up for their own free GoCardless BAD account and pastes `secret_id`/`secret_key` into a settings modal. The desktop app talks to GoCardless directly. Bank data flows bank → GoCardless → user's machine; we never see it. Same posture as the Tink settings modal.
-
-Build order:
-
-- [ ] **Schema migration**
-    - [ ] Drop Tink tables (`tink_credentials`, `tink_tokens`) and the `tink_account_id` / `tink_last_sync_at` columns on `accounts`.
-    - [ ] Add `gocardless_credentials(secret_id, secret_key)`, `gocardless_tokens(access_token, refresh_token, expires_at)`.
-    - [ ] Add `gocardless_account_id TEXT`, `gocardless_last_sync_at TEXT` to `accounts`.
-- [ ] **`finp.gocardless` module** (clean room, not adapted from Tink)
-    - [ ] `credentials.py` — read/write `secret_id` + `secret_key`.
-    - [ ] `auth.py` — token endpoint (`/api/v2/token/new/`), refresh, transparent reauth before any call.
-    - [ ] `client.py` — httpx wrapper. Endpoints: `list_institutions(country='fr')`, `create_requisition(institution_id, redirect_uri)`, `list_accounts(requisition_id)`, `get_transactions(account_id, date_from=None)`.
-    - [ ] `sync.py` — `sync_account(account_id)`: fetch transactions since `gocardless_last_sync_at` (omit `date_from` on first sync). Use `transactionId` as `dedup_hash`. Map `bookingDate` → date, `transactionAmount.amount × 100` → montant_cents, `remittanceInformationUnstructured` (fallback `creditorName`/`debtorName`) → libellé. Ignore `pending` array (no `transactionId`, can't dedup). Push through existing ingestion path (dedup + rules).
-- [ ] **OAuth / requisition flow** — Tauri opens browser to GoCardless requisition link → localhost callback (configurable port, not hardcoded) → backend persists requisition + accounts list.
-- [ ] **IPC commands**: `gocardless.get_credentials`, `gocardless.save_credentials`, `gocardless.list_institutions`, `gocardless.create_requisition`, `gocardless.handle_oauth_callback`, `gocardless.list_gocardless_accounts`, `gocardless.link_account`, `gocardless.sync_account`.
-- [ ] **Frontend — Comptes page**
-    - [ ] Settings modal (gear icon): `secret_id` + `secret_key` inputs, link to GoCardless signup.
-    - [ ] Institution picker (FR banks list, searchable) → [Connecter] → browser → callback → link dialog mapping GoCardless accounts to finp accounts.
-    - [ ] Per-account [Synchroniser] with last-sync timestamp, spinner, result toast (imported / skipped / failed).
-- [ ] **Tear down Tink**: delete `finp.tink` package, its IPC surface, and any frontend remnants.
-- [x] **Verify before shipping**: confirm GoCardless BAD ToS allows the user-supplied-credentials pattern in a distributed/open-source desktop binary, and pin the current free-tier ceiling (active-connection limit) in this TODO.
+- [x] **Schema migration** — `0010_gocardless.sql` drops Tink tables/columns and adds `gocardless_credentials`, `gocardless_tokens`, plus `gocardless_account_id` / `gocardless_requisition_id` / `gocardless_last_sync_at` on `accounts`.
+- [x] **`finp.gocardless` module** — `credentials.py`, `auth.py` (token lifecycle + requisition flow + localhost callback on `FINP_GC_PORT`, default 17891), `client.py`, `sync.py` (transactionId-based dedup, ignores pending).
+- [x] **IPC commands** — `gocardless.get_credentials`, `save_credentials`, `has_connection`, `list_institutions`, `create_requisition`, `get_requisition_status`, `list_requisition_accounts`, `link_account`, `sync_account`.
+- [x] **Tear down Tink** — `finp.tink` package, IPC surface, and frontend wrapper removed.
+- [x] **Frontend Comptes page** — settings modal + per-account institution picker / link / sync dialog implemented in `GoCardlessDialogs.tsx`, then **disabled in the UI** until a working signup path resurfaces. The component file remains for when we unpark.
+- [x] **Verify before shipping**: signup blocker confirmed via direct attempt (May 2026). Free-tier ceiling unverified.
 
 ### M12.7 — Onboarding & empty states
 

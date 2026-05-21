@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Landmark, Plus, Settings, Trash2, Upload } from "lucide-react";
+import { Plus, Settings, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { ImportDialog } from "@/components/ImportDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import {
-  GoCardlessLinkDialog,
-  GoCardlessSettingsDialog,
-} from "@/components/GoCardlessDialogs";
 import { accountsApi } from "@/lib/api";
 import type { Account } from "@/lib/api";
 import { formatEuros as formatEurosFromCents } from "@/lib/format";
@@ -44,8 +40,6 @@ export function ComptesPage() {
   const [importing, setImporting] = useState<Account | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Account | null>(null);
   const [settingsFor, setSettingsFor] = useState<Account | null>(null);
-  const [linkFor, setLinkFor] = useState<Account | null>(null);
-  const [gcSettingsOpen, setGcSettingsOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -72,15 +66,6 @@ export function ComptesPage() {
   return (
     <div className="px-6 py-5 max-w-3xl">
       <div className="flex items-center justify-end gap-2 mb-5">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setGcSettingsOpen(true)}
-          title={t.gocardless.settingsTitle}
-          aria-label={t.gocardless.settingsTitle}
-        >
-          <Landmark className="size-3.5" />
-        </Button>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="size-3.5" />
           {t.common.add}
@@ -110,22 +95,6 @@ export function ComptesPage() {
               <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                 {formatLastImport(acc.last_import_at)}
               </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setLinkFor(acc)}
-                title={
-                  acc.gocardless_account_id
-                    ? t.gocardless.linked
-                    : t.gocardless.connect
-                }
-                aria-label={t.gocardless.linkTitle.replace("{name}", acc.name)}
-                className={
-                  acc.gocardless_account_id ? "text-credit" : "text-muted-foreground"
-                }
-              >
-                <Landmark className="size-3.5" />
-              </Button>
               <Button size="sm" variant="ghost" onClick={() => setImporting(acc)}>
                 <Upload className="size-3.5" />
                 {t.comptes.import}
@@ -176,20 +145,6 @@ export function ComptesPage() {
             setSettingsFor(null);
             await refresh();
           }}
-        />
-      )}
-
-      <GoCardlessSettingsDialog
-        open={gcSettingsOpen}
-        onOpenChange={setGcSettingsOpen}
-      />
-
-      {linkFor && (
-        <GoCardlessLinkDialog
-          account={linkFor}
-          open={!!linkFor}
-          onOpenChange={(v) => !v && setLinkFor(null)}
-          onLinked={refresh}
         />
       )}
 
