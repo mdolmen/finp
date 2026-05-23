@@ -1,54 +1,55 @@
-# Finp — Finances Personnelles
+# Finp — Personal Finances
 
-Application de gestion de finances personnelles, locale et sans abonnement.
+A local-first personal finance app. No subscription, no cloud, no telemetry.
 
-## Prérequis
+## Requirements
 
-- macOS 12 ou supérieur
-- Aucune connexion internet requise
+- macOS 12 or later
+- No internet connection required
 
 ## Installation
 
-1. Télécharger le fichier `.dmg` depuis les releases.
-2. Ouvrir le `.dmg` et glisser **Finp** dans le dossier Applications.
-3. Au premier lancement, faire **clic droit → Ouvrir** (macOS bloque les apps non signées par défaut).
+1. Download the `.dmg` from the releases page.
+2. Open the `.dmg` and drag **Finp** into your Applications folder.
+3. On first launch, **right-click → Open** (macOS blocks unsigned apps by default).
 
-## Premiers pas
+## Getting started
 
-1. Aller dans **Comptes** et créer un compte bancaire.
-2. Importer un relevé CSV via le bouton **Importer**.
-3. Assigner des catégories aux opérations depuis la page **Opérations**.
-4. Configurer des règles d'auto-catégorisation dans **Règles**.
-5. Consulter le **Bilan** pour visualiser dépenses et revenus par mois.
+1. Open **Comptes** (Accounts) and create a bank account.
+2. Import a CSV statement with the **Importer** button.
+3. Assign categories to operations from the **Opérations** page.
+4. Set up auto-categorisation in **Règles** (Rules).
+5. Wire up outbound webhooks in **Automatisations** to notify external systems.
+6. Check the **Bilan** (Overview) to visualise monthly expenses and income.
 
-## Fonctionnalités
+## Features
 
-- Import CSV avec détection automatique des colonnes
-- Catégorisation manuelle ou automatique par règles
-- Bilan mensuel avec histogramme par catégorie, décomposé par catégorie
-- Projection des opérations prévues sur le graphique
-- Solde courant par compte (basé sur un solde initial + toutes les opérations)
-- Recherche plein texte sur les libellés (SQLite FTS5)
-- Aucune donnée ne quitte votre machine
+- CSV import with column auto-detection and per-account mapping memory.
+- Manual or rule-based categorisation.
+- **Rules** — match operations by label substring or amount comparison, and auto-assign a target category. Rules run on import and can be re-applied on demand.
+- **Automations** — bridge the internal event bus to outbound HTTP webhooks (e.g. n8n). Every match is **human-validated**: nothing leaves your machine without an explicit click. The Historique tab records the HTTP response code and a short body excerpt for each delivery so failures stay diagnosable.
+- Monthly overview with a stacked bar chart per category, expenses on one side, income on the other.
+- Projection of planned operations onto the chart.
+- Current balance per account (initial balance + every operation).
+- Full-text search on labels (SQLite FTS5).
+- Nothing leaves your machine.
 
-## Données
+## Data
 
-Les données sont stockées dans un fichier SQLite dans le dossier de données de l'application :
+All data lives in a single SQLite file inside the application's data directory:
 
 ```
 ~/Library/Application Support/io.github.mathieudolmen.finp/finp.db
 ```
 
-Pour sauvegarder, copier ce fichier.
+To back up your data, copy this file.
 
-## Connexion bancaire (Tink)
+## Bank synchronisation
 
-Le code d'intégration avec l'API Tink Open Banking est présent mais **désactivé dans l'interface**.
+Direct bank-sync integrations (Tink, then GoCardless Bank Account Data) were both prototyped and **parked**: their developer onboarding paths assume a company providing financial services to its own users, not an individual accessing their own accounts. The backend code is preserved but the UI entry points are disabled.
 
-La raison : l'API Tink est conçue pour qu'une entreprise fournisse des services financiers à ses propres utilisateurs via la plateforme Tink. Elle n'est pas prévue pour un usage individuel où une personne accède directement à ses propres comptes. En pratique, cela se traduit par des contraintes d'enregistrement, de validation et de contrat qui ne correspondent pas à un outil personnel.
+CSV import is the supported ingestion path. Every French bank lets you export transaction history as CSV from its online portal.
 
-L'alternative naturelle est le CSV : tous les établissements bancaires français permettent d'exporter l'historique des opérations au format CSV depuis l'espace client en ligne.
+## Development
 
-## Développement
-
-Voir [CLAUDE.md](CLAUDE.md) pour les conventions de code, la stack technique et les commandes de développement.
+See [CLAUDE.md](CLAUDE.md) for code conventions, the tech stack, and dev commands. The product spec lives in [NOTES.md](NOTES.md).
