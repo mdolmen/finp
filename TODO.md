@@ -284,6 +284,7 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 
 - [ ] V2 handling of http requests
     - an async worker to send the requests which waits the answer and stores the response code
+- [ ] support multiple conditions
 
 ### Page "Immobilier"
 
