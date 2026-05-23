@@ -20,16 +20,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { automationsApi } from "@/lib/api";
+import { automationsApi, categoriesApi, operationsApi } from "@/lib/api";
 import type {
   Automation,
   AutomationEventType,
   AutomationPending,
+  Category,
   HistoryStatusFilter,
+  Operation,
   Predicate,
 } from "@/lib/api";
 import { toastError, toast } from "@/lib/toast";
-import { formatEuros } from "@/lib/format";
+import { formatDate, formatEuros } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
@@ -45,6 +47,7 @@ export function AutomatisationsPage() {
   const [automations, setAutomations] = useState<Automation[] | null>(null);
   const [history, setHistory] = useState<AutomationPending[] | null>(null);
   const [historyFilter, setHistoryFilter] = useState<HistoryStatusFilter>("all");
+  const [categories, setCategories] = useState<Category[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Automation | null>(null);
   const [deleting, setDeleting] = useState<Automation | null>(null);
@@ -52,14 +55,16 @@ export function AutomatisationsPage() {
 
   const refresh = useCallback(async (status: HistoryStatusFilter = historyFilter) => {
     try {
-      const [p, a, h] = await Promise.all([
+      const [p, a, h, c] = await Promise.all([
         automationsApi.pending.list(),
         automationsApi.list(),
         automationsApi.history.list(status, 20),
+        categoriesApi.list(),
       ]);
       setPending(p);
       setAutomations(a);
       setHistory(h);
+      setCategories(c);
     } catch (e) {
       toastError(e);
     }
@@ -249,7 +254,11 @@ export function AutomatisationsPage() {
       />
 
       {detailsOf && (
-        <DetailsDialog item={detailsOf} onClose={() => setDetailsOf(null)} />
+        <DetailsDialog
+          item={detailsOf}
+          categories={categories}
+          onClose={() => setDetailsOf(null)}
+        />
       )}
     </div>
   );
@@ -270,7 +279,7 @@ function Section({
 }) {
   return (
     <details className="group mb-4" open={defaultOpen}>
-      <summary className="list-none flex items-center gap-2 cursor-pointer select-none px-1 py-2 border-b border-border">
+      <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center gap-2 cursor-pointer select-none px-1 py-2 border-b border-border">
         <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
         <h2 className="text-sm font-medium flex-1">
           {title}
@@ -470,16 +479,41 @@ function StatusPill({ status }: { status: AutomationPending["status"] }) {
 
 function DetailsDialog({
   item,
+  categories,
   onClose,
 }: {
   item: AutomationPending;
+  categories: Category[];
   onClose: () => void;
 }) {
+  const [op, setOp] = useState<Operation | null>(null);
+
+  useEffect(() => {
+    if (item.operation_id === null) return;
+    let cancelled = false;
+    operationsApi
+      .get(item.operation_id)
+      .then((o) => {
+        if (!cancelled) setOp(o);
+      })
+      .catch(() => {
+        // Operation may have been deleted; we'll just omit the human summary.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.operation_id]);
+
   const body = {
     automation: { id: item.automation_id, name: item.automation_name },
     event: { type: item.event_type, payload: item.payload },
     pending_id: item.id,
   };
+
+  const categoryName = op?.category_id
+    ? (categories.find((c) => c.id === op.category_id)?.name ?? null)
+    : null;
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-lg">
@@ -492,6 +526,18 @@ function DetailsDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+        {op && (
+          <dl className="text-xs grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border border-border rounded-md p-3 bg-muted/40">
+            <dt className="text-muted-foreground">{t.automatisations.opDate}</dt>
+            <dd className="tabular-nums">{formatDate(op.date)}</dd>
+            <dt className="text-muted-foreground">{t.automatisations.opMontant}</dt>
+            <dd className="tabular-nums">{formatEuros(op.montant_cents)}</dd>
+            <dt className="text-muted-foreground">{t.automatisations.opLibelle}</dt>
+            <dd className="truncate">{op.libelle}</dd>
+            <dt className="text-muted-foreground">{t.automatisations.opCategory}</dt>
+            <dd>{categoryName ?? t.common.noCategory}</dd>
+          </dl>
+        )}
         <pre className="text-xs bg-muted rounded-md p-3 overflow-auto max-h-80 font-mono">
           {JSON.stringify(body, null, 2)}
         </pre>
