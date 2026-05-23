@@ -64,8 +64,6 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [x] Import flow:
     - [x] File picker → parse first CSV rows → mapping UI (pick which column = date, montant, libellé; date format).
     - [x] On confirm, save mapping on the account and ingest. Show count: imported / skipped (dedup) / failed.
-    - [ ] Re-import uses saved mapping without prompting (currently shown pre-filled).
-- [ ] Edit mapping action (per account).
 - [x] After ingest: emit `operation.created` events; trigger rules engine on new ops.
 
 ## M5 — Page "Catégories"
