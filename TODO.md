@@ -276,15 +276,25 @@ Build order is roughly top-to-bottom. Each milestone should leave the app in a r
 - [x] Playwright golden path: create automation → import a CSV operation that matches → pending row appears → confirm → mock webhook receives POST.
 - [x] Document the payload contract in `NOTES.md` (event types, JSON shape, the human-validation guarantee).
 
+### M13.5 — Webhook response storage
+
+> Today `confirm()` only records "success" vs an error string. Add the actual HTTP status code (and a short body excerpt) so failures are diagnosable from the Historique UI. Delivery remains synchronous — an async worker is parked in *Later*.
+
+- [x] Migration `0012_automation_response.sql`: add `response_status_code INTEGER` and `response_body_excerpt TEXT` columns to `automation_pending` (both nullable; older rows stay NULL).
+- [x] [webhook.py](backend/src/finp/automations/webhook.py): return a `PostResult(status_code: int | None, body_excerpt: str | None, error: str | None)` instead of `str | None`. `status_code` is set for any HTTP response (success or not); `error` is set only for network/serialization failures with no HTTP response.
+- [x] [queue.py](backend/src/finp/automations/queue.py) `confirm()`: persist all three fields. `PendingItem` + the `PendingOut` pydantic wire shape gain `response_status_code` and `response_body_excerpt`.
+- [x] Body excerpt is the first 200 chars of the response body, regardless of `Content-Type` (cheap, good enough for "what did the webhook say?").
+- [x] Frontend: history row shows an `HTTP {code}` chip next to the status pill when present; the Détails dialog adds a "Réponse" section showing the status code and the body excerpt.
+- [x] i18n: `automatisations.responseTitle`, `automatisations.responseStatus`, `automatisations.responseBody` in `fr.ts` + `en.ts`.
+- [x] Unit tests: 2xx response stores code + body excerpt and status `sent`; 5xx response stores code + body and status `failed`; network error stores `error` with `status_code=None`.
+
 ---
 
 ## Later (planned, not v1)
 
 ### Page "Automatisations"
 
-- [ ] V2 handling of http requests
-    - an async worker to send the requests which waits the answer and stores the response code
-- [ ] support multiple conditions
+- [ ] V2 async webhook worker: queue + dedicated thread that POSTs in the background, intermediate `sending` status, optional retries. Only do this if the synchronous confirm freeze becomes a real UX problem.
 
 ### Page "Immobilier"
 

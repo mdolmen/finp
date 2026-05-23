@@ -32,6 +32,8 @@ class PendingItem:
     payload: dict[str, Any]
     status: Status
     error: str | None
+    response_status_code: int | None
+    response_body_excerpt: str | None
     created_at: str
     resolved_at: str | None
 
@@ -47,6 +49,8 @@ def _row_to_item(row: sqlite3.Row) -> PendingItem:
         payload=json.loads(row["event_payload_json"]),
         status=row["status"],
         error=row["error"],
+        response_status_code=row["response_status_code"],
+        response_body_excerpt=row["response_body_excerpt"],
         created_at=row["created_at"],
         resolved_at=row["resolved_at"],
     )
@@ -55,6 +59,7 @@ def _row_to_item(row: sqlite3.Row) -> PendingItem:
 _SELECT = (
     "SELECT p.id, p.automation_id, a.name AS automation_name, a.callback_url,"
     " p.event_type, p.operation_id, p.event_payload_json, p.status, p.error,"
+    " p.response_status_code, p.response_body_excerpt,"
     " p.created_at, p.resolved_at"
     " FROM automation_pending p JOIN automations a ON a.id = p.automation_id"
 )
@@ -138,14 +143,21 @@ def confirm(conn: sqlite3.Connection, pending_id: int) -> PendingItem:
     if item.status in ("sent", "refused"):
         return item
 
-    error = post_webhook(item.callback_url, _build_webhook_body(item))
-    new_status: Status = "failed" if error is not None else "sent"
+    result = post_webhook(item.callback_url, _build_webhook_body(item))
+    new_status: Status = "sent" if result.succeeded else "failed"
+    error: str | None = result.error
+    if error is None and not result.succeeded and result.status_code is not None:
+        # HTTP response received but non-2xx: keep a short human-readable summary
+        # in ``error`` for backward-compatible callers; the status code is now
+        # carried separately.
+        error = f"HTTP {result.status_code}"
     conn.execute(
         "UPDATE automation_pending"
         " SET status = ?, error = ?,"
+        " response_status_code = ?, response_body_excerpt = ?,"
         " resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
         " WHERE id = ?",
-        (new_status, error, pending_id),
+        (new_status, error, result.status_code, result.body_excerpt, pending_id),
     )
     return _get_for_confirm(conn, pending_id)
 

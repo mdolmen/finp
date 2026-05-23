@@ -52,6 +52,8 @@ class PendingOut(BaseModel):
     payload: dict[str, Any]
     status: Literal["pending", "sent", "failed", "refused"]
     error: str | None
+    response_status_code: int | None
+    response_body_excerpt: str | None
     created_at: str
     resolved_at: str | None
 
@@ -67,6 +69,8 @@ class PendingOut(BaseModel):
             payload=item.payload,
             status=item.status,
             error=item.error,
+            response_status_code=item.response_status_code,
+            response_body_excerpt=item.response_body_excerpt,
             created_at=item.created_at,
             resolved_at=item.resolved_at,
         )

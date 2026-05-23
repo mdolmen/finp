@@ -53,6 +53,8 @@ function enqueueAutomationsForOp(op) {
       payload: { id: op.id, account_id: op.account_id },
       status: "pending",
       error: null,
+      response_status_code: null,
+      response_body_excerpt: null,
       created_at: now(),
       resolved_at: null,
     });
@@ -357,6 +359,8 @@ function dispatch(method, params) {
         },
       });
       item.status = "sent";
+      item.response_status_code = 200;
+      item.response_body_excerpt = '{"ok":true}';
       item.resolved_at = now();
       return { ...item };
     }

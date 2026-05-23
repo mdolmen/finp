@@ -75,6 +75,8 @@ type MockPending = {
   payload: Record<string, unknown>;
   status: "pending" | "sent" | "failed" | "refused";
   error: string | null;
+  response_status_code: number | null;
+  response_body_excerpt: string | null;
   created_at: string;
   resolved_at: string | null;
 };

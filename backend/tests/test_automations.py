@@ -24,6 +24,7 @@ from finp.automations import (
 from finp.automations.crud import AutomationNotFoundError, delete, get
 from finp.automations.matcher import match
 from finp.automations.queue import _build_webhook_body
+from finp.automations.webhook import PostResult
 from finp.predicates import LibelleContains, MontantCompare
 
 
@@ -158,16 +159,18 @@ def test_confirm_sends_webhook_and_flips_status(conn, op_groceries, monkeypatch)
 
     seen: dict[str, Any] = {}
 
-    def fake_post(url: str, body: dict[str, Any]) -> str | None:
+    def fake_post(url: str, body: dict[str, Any]) -> PostResult:
         seen["url"] = url
         seen["body"] = body
-        return None
+        return PostResult(status_code=200, body_excerpt='{"ok":true}', error=None)
 
     monkeypatch.setattr("finp.automations.queue.post_webhook", fake_post)
 
     resolved = confirm_pending(conn, pending.id)
     assert resolved.status == "sent"
     assert resolved.error is None
+    assert resolved.response_status_code == 200
+    assert resolved.response_body_excerpt == '{"ok":true}'
     assert resolved.resolved_at is not None
     assert seen["url"] == "http://example.test/hook"
     assert seen["body"]["event"]["payload"] == {"id": op_groceries.id}
@@ -178,7 +181,7 @@ def test_confirm_sends_webhook_and_flips_status(conn, op_groceries, monkeypatch)
     assert [h.id for h in history] == [pending.id]
 
 
-def test_confirm_captures_failure(conn, op_groceries, monkeypatch):
+def test_confirm_captures_http_failure(conn, op_groceries, monkeypatch):
     create(
         conn,
         name="groceries",
@@ -191,12 +194,39 @@ def test_confirm_captures_failure(conn, op_groceries, monkeypatch):
 
     monkeypatch.setattr(
         "finp.automations.queue.post_webhook",
-        lambda url, body: "HTTP 500: boom",
+        lambda url, body: PostResult(status_code=500, body_excerpt="boom", error=None),
     )
 
     resolved = confirm_pending(conn, pending.id)
     assert resolved.status == "failed"
-    assert resolved.error == "HTTP 500: boom"
+    assert resolved.error == "HTTP 500"
+    assert resolved.response_status_code == 500
+    assert resolved.response_body_excerpt == "boom"
+
+
+def test_confirm_captures_network_failure(conn, op_groceries, monkeypatch):
+    create(
+        conn,
+        name="groceries",
+        event_type="operation.created",
+        predicate=LibelleContains(text="GROC"),
+        callback_url="http://example.test/hook",
+    )
+    enqueue_for_event(conn, "operation.created", {"id": op_groceries.id})
+    pending = list_pending(conn)[0]
+
+    monkeypatch.setattr(
+        "finp.automations.queue.post_webhook",
+        lambda url, body: PostResult(
+            status_code=None, body_excerpt=None, error="ConnectError: refused"
+        ),
+    )
+
+    resolved = confirm_pending(conn, pending.id)
+    assert resolved.status == "failed"
+    assert resolved.error == "ConnectError: refused"
+    assert resolved.response_status_code is None
+    assert resolved.response_body_excerpt is None
 
 
 def test_refuse_flips_status_to_refused(conn, op_groceries):
@@ -244,12 +274,18 @@ def test_history_respects_status_filter_and_limit(conn, account, monkeypatch):
     assert len(pending_ids) == 5
 
     # 2 refused, 2 sent, 1 failed.
-    monkeypatch.setattr("finp.automations.queue.post_webhook", lambda u, b: None)
+    monkeypatch.setattr(
+        "finp.automations.queue.post_webhook",
+        lambda u, b: PostResult(status_code=200, body_excerpt=None, error=None),
+    )
     refuse_pending(conn, pending_ids[0])
     refuse_pending(conn, pending_ids[1])
     confirm_pending(conn, pending_ids[2])
     confirm_pending(conn, pending_ids[3])
-    monkeypatch.setattr("finp.automations.queue.post_webhook", lambda u, b: "HTTP 500: x")
+    monkeypatch.setattr(
+        "finp.automations.queue.post_webhook",
+        lambda u, b: PostResult(status_code=500, body_excerpt="x", error=None),
+    )
     confirm_pending(conn, pending_ids[4])
 
     assert len(list_history(conn, status="all")) == 5

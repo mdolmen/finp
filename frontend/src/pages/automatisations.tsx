@@ -422,6 +422,9 @@ function HistoryRow({
   return (
     <li className="flex items-center gap-3 px-3 py-2 text-sm">
       <StatusPill status={item.status} />
+      {item.response_status_code !== null && (
+        <HttpCodeChip code={item.response_status_code} />
+      )}
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{item.automation_name}</div>
         <div className="text-xs text-muted-foreground truncate">
@@ -455,6 +458,23 @@ function HistoryRow({
         {t.automatisations.details}
       </Button>
     </li>
+  );
+}
+
+function HttpCodeChip({ code }: { code: number }) {
+  const ok = code >= 200 && code < 300;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono tabular-nums",
+        ok
+          ? "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300"
+          : "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300",
+      )}
+      title={`HTTP ${code}`}
+    >
+      {code}
+    </span>
   );
 }
 
@@ -537,6 +557,36 @@ function DetailsDialog({
             <dt className="text-muted-foreground">{t.automatisations.opCategory}</dt>
             <dd>{categoryName ?? t.common.noCategory}</dd>
           </dl>
+        )}
+        {(item.response_status_code !== null ||
+          item.response_body_excerpt ||
+          item.error) && (
+          <div className="text-xs border border-border rounded-md p-3 space-y-1.5">
+            <div className="font-medium text-muted-foreground">
+              {t.automatisations.responseTitle}
+            </div>
+            {item.response_status_code !== null && (
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">
+                  {t.automatisations.responseStatus}
+                </span>
+                <HttpCodeChip code={item.response_status_code} />
+              </div>
+            )}
+            {item.response_body_excerpt && (
+              <div>
+                <div className="text-muted-foreground mb-1">
+                  {t.automatisations.responseBody}
+                </div>
+                <pre className="bg-muted rounded-md p-2 overflow-auto max-h-32 font-mono">
+                  {item.response_body_excerpt}
+                </pre>
+              </div>
+            )}
+            {item.error && item.response_status_code === null && (
+              <div className="text-red-700 dark:text-red-400">{item.error}</div>
+            )}
+          </div>
         )}
         <pre className="text-xs bg-muted rounded-md p-3 overflow-auto max-h-80 font-mono">
           {JSON.stringify(body, null, 2)}

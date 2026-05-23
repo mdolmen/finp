@@ -29,6 +29,8 @@ export type AutomationPending = {
   payload: Record<string, unknown>;
   status: PendingStatus;
   error: string | null;
+  response_status_code: number | null;
+  response_body_excerpt: string | null;
   created_at: string;
   resolved_at: string | null;
 };
