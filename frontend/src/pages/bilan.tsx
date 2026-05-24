@@ -48,7 +48,10 @@ export function BilanPage() {
   // data so applying filters never rescales the chart (just empties it).
   const [yMaxEuros, setYMaxEuros] = useState<number | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
-  const [accountsList, setAccountsList] = useState<Account[]>([]);
+  // ``null`` until ``accountsApi.list`` resolves, so we don't confuse
+  // "still loading" with "really empty" — the redirect-to-Comptes effect
+  // below depends on this distinction.
+  const [accountsList, setAccountsList] = useState<Account[] | null>(null);
   const [planned, setPlanned] = useState<PlannedOperation[]>([]);
   const [addPlannedOpen, setAddPlannedOpen] = useState(false);
   const [deletingPlanned, setDeletingPlanned] = useState<PlannedOperation | null>(null);
@@ -144,7 +147,7 @@ export function BilanPage() {
   }, [accountIds, debitIds, creditIds, options, monthOffset]);
 
   const navigate = useNavigate();
-  const noAccounts = accountsList.length === 0 && options !== null;
+  const noAccounts = accountsList !== null && accountsList.length === 0;
   useEffect(() => {
     if (noAccounts) navigate("/comptes", { replace: true });
   }, [noAccounts, navigate]);
@@ -200,7 +203,7 @@ export function BilanPage() {
       <div className="grid grid-cols-2 gap-4 mt-4">
         <KpiPanel
           summary={summary}
-          soldeCents={selectedAccountsSoldeCents(accountsList, accountIds)}
+          soldeCents={selectedAccountsSoldeCents(accountsList ?? [], accountIds)}
         />
         <PlannedPanel
           planned={planned}
