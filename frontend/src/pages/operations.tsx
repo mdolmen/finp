@@ -532,6 +532,10 @@ export function OperationsPage() {
       {selected.size > 0 && (
         <BulkBar
           count={selected.size}
+          totalCents={(ops ?? []).reduce(
+            (sum, o) => (selected.has(o.id) ? sum + o.montant_cents : sum),
+            0,
+          )}
           cats={cats}
           onAssign={handleBulkAssign}
           onDeselect={() => setSelected(new Set())}
@@ -543,11 +547,13 @@ export function OperationsPage() {
 
 function BulkBar({
   count,
+  totalCents,
   cats,
   onAssign,
   onDeselect,
 }: {
   count: number;
+  totalCents: number;
   cats: Category[];
   onAssign: (categoryId: number | null) => void;
   onDeselect: () => void;
@@ -595,6 +601,14 @@ function BulkBar({
       >
         <X className="size-3.5" />
       </Button>
+      <span
+        className={cn(
+          "pl-2 ml-1 border-l border-border tabular-nums font-medium",
+          totalCents < 0 ? "text-debit" : "text-credit",
+        )}
+      >
+        {formatEuros(totalCents)}
+      </span>
     </div>
   );
 }
