@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Repeat, Sparkles, X } from "lucide-react";
+import { Info, Repeat, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -511,6 +511,7 @@ export function OperationsPage() {
       <OperationsList
         ops={ops}
         cats={cats}
+        accounts={accounts ?? []}
         onAssign={handleAssign}
         onToggleRecurring={handleCycleRecurring}
         selected={selected}
@@ -733,11 +734,12 @@ function FilterCheckbox({
   );
 }
 
-const GRID_COLS = "grid-cols-[28px_100px_120px_1fr_28px_220px]";
+const GRID_COLS = "grid-cols-[28px_100px_120px_1fr_28px_28px_220px]";
 
 function OperationsList({
   ops,
   cats,
+  accounts,
   onAssign,
   onToggleRecurring,
   selected,
@@ -748,6 +750,7 @@ function OperationsList({
 }: {
   ops: Operation[] | null;
   cats: Category[];
+  accounts: Account[];
   onAssign: (opId: number, value: string) => void;
   onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: Set<number>;
@@ -774,6 +777,7 @@ function OperationsList({
     <VirtualizedList
       ops={ops}
       cats={cats}
+      accounts={accounts}
       onAssign={onAssign}
       onToggleRecurring={onToggleRecurring}
       selected={selected}
@@ -795,6 +799,7 @@ function OperationsList({
           <div className="text-right">{t.operations.columnMontant}</div>
           <div>{t.operations.columnLibelle}</div>
           <div />
+          <div />
           <div>{t.operations.columnCategory}</div>
         </div>
       }
@@ -805,6 +810,7 @@ function OperationsList({
 function VirtualizedList({
   ops,
   cats,
+  accounts,
   onAssign,
   onToggleRecurring,
   selected,
@@ -814,6 +820,7 @@ function VirtualizedList({
 }: {
   ops: Operation[];
   cats: Category[];
+  accounts: Account[];
   onAssign: (opId: number, value: string) => void;
   onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: Set<number>;
@@ -858,6 +865,7 @@ function VirtualizedList({
                 <OperationRow
                   op={op}
                   cats={cats}
+                  accounts={accounts}
                   onAssign={onAssign}
                   onToggleRecurring={onToggleRecurring}
                   selected={selected.has(op.id)}
@@ -875,6 +883,7 @@ function VirtualizedList({
 function OperationRow({
   op,
   cats,
+  accounts,
   onAssign,
   onToggleRecurring,
   selected,
@@ -882,12 +891,14 @@ function OperationRow({
 }: {
   op: Operation;
   cats: Category[];
+  accounts: Account[];
   onAssign: (opId: number, value: string) => void;
   onToggleRecurring: (opId: number, current: "none" | "monthly" | "yearly") => void;
   selected: boolean;
   onToggle: (checked: boolean) => void;
 }) {
   const value = op.category_id != null ? String(op.category_id) : NO_CATEGORY;
+  const accountName = accounts.find((a) => a.id === op.account_id)?.name ?? "—";
   return (
     <div
       className={cn(
@@ -918,6 +929,21 @@ function OperationRow({
       <div className="truncate" title={op.libelle}>
         {op.libelle}
       </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center justify-center size-6 rounded-sm text-muted-foreground/40 hover:text-muted-foreground"
+            aria-label="Détails"
+          >
+            <Info className="size-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2 text-xs" align="start">
+          <div className="text-muted-foreground">Compte</div>
+          <div className="font-medium">{accountName}</div>
+        </PopoverContent>
+      </Popover>
       <button
         type="button"
         onClick={() => onToggleRecurring(op.id, op.recurring)}
