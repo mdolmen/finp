@@ -652,20 +652,30 @@ function CategoryMultiSelect({
           {label}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-52 p-1" align="start">
+      <PopoverContent className="w-60 p-1" align="start">
         <ul className="max-h-72 overflow-y-auto">
           {categories.map((c) => (
             <li key={c.id}>
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm select-none">
-                <Checkbox
-                  checked={isChecked(c.id)}
-                  onCheckedChange={(v) => toggle(c.id, v === true)}
-                />
-                <span className="truncate">{c.name}</span>
-              </label>
+              <button
+                type="button"
+                onClick={() => toggle(c.id, !isChecked(c.id))}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md hover:bg-accent"
+              >
+                <Checkbox checked={isChecked(c.id)} />
+                <span className="flex-1 text-left truncate">{c.name}</span>
+              </button>
             </li>
           ))}
         </ul>
+        <div className="border-t border-border mt-1 pt-1">
+          <button
+            type="button"
+            onClick={() => onChange(isAll ? [] : null)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent text-left cursor-pointer"
+          >
+            {isAll ? t.common.clearSelection : t.common.selectAll}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -712,20 +722,30 @@ function AccountMultiSelect({
           {label}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-52 p-1" align="start">
-        <ul>
+      <PopoverContent className="w-60 p-1" align="start">
+        <ul className="max-h-72 overflow-y-auto">
           {accounts.map((a) => (
             <li key={a.id}>
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm select-none">
-                <Checkbox
-                  checked={isChecked(a.id)}
-                  onCheckedChange={(v) => toggle(a.id, v === true)}
-                />
-                <span className="truncate">{a.name}</span>
-              </label>
+              <button
+                type="button"
+                onClick={() => toggle(a.id, !isChecked(a.id))}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md hover:bg-accent"
+              >
+                <Checkbox checked={isChecked(a.id)} />
+                <span className="flex-1 text-left truncate">{a.name}</span>
+              </button>
             </li>
           ))}
         </ul>
+        <div className="border-t border-border mt-1 pt-1">
+          <button
+            type="button"
+            onClick={() => onChange(isAll ? [] : null)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent text-left cursor-pointer"
+          >
+            {isAll ? t.common.clearSelection : t.common.selectAll}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );

@@ -219,6 +219,7 @@ export const fr = {
     empty: "(aucune option)",
     selected: "sélectionnés",
     clearSelection: "Tout désélectionner",
+    selectAll: "Tout sélectionner",
     noCategory: "Sans catégorie",
   },
   import: {
